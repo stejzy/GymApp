@@ -7,11 +7,10 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 public class Example {
 
-
     @Value("${spring.application.name}")
     private String name;
 
-    @GetMapping("/api/helloWorld")
+    @GetMapping("/helloWorld")
     public String helloWorld(){
         return "Hello World" + name;
     }

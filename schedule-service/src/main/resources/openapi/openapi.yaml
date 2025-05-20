@@ -1,0 +1,192 @@
+openapi: 3.0.0
+info:
+  title: Gym Booking & Session API
+  version: 1.0.0
+  description: API for managing user bookings and trainer sessions.
+
+tags:
+  - name: Booking
+    description: User bookings for training sessions
+  - name: Session
+    description: Trainer-created training sessions
+
+paths:
+  /bookings:
+    get:
+      summary: Get list of user's bookings
+      tags: [Booking]
+      responses:
+        '200':
+          description: List of bookings retrieved successfully
+        '500':
+          description: Server error
+
+    post:
+      summary: Create a new booking
+      tags: [Booking]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                sessionId:
+                  type: string
+                userId:
+                  type: string
+      responses:
+        '201':
+          description: Booking created
+        '400':
+          description: Invalid input
+
+  /bookings/{bookingId}:
+    get:
+      summary: Get a specific booking by ID
+      tags: [Booking]
+      parameters:
+        - name: bookingId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Booking details
+        '404':
+          description: Booking not found
+
+    put:
+      summary: Update a booking
+      tags: [Booking]
+      parameters:
+        - name: bookingId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                sessionId:
+                  type: string
+      responses:
+        '200':
+          description: Booking updated
+        '400':
+          description: Invalid update data
+
+    delete:
+      summary: Cancel a booking
+      tags: [Booking]
+      parameters:
+        - name: bookingId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '204':
+          description: Booking deleted
+        '404':
+          description: Booking not found
+
+  /sessions:
+    get:
+      summary: Get all sessions created by trainer
+      tags: [Session]
+      responses:
+        '200':
+          description: List of sessions
+        '500':
+          description: Server error
+
+    post:
+      summary: Create a training session
+      tags: [Session]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                title:
+                  type: string
+                trainerId:
+                  type: string
+                dateTime:
+                  type: string
+                  format: date-time
+                location:
+                  type: string
+      responses:
+        '201':
+          description: Session created
+        '400':
+          description: Invalid input
+
+  /sessions/{sessionId}:
+    get:
+      summary: Get session by ID
+      tags: [Session]
+      parameters:
+        - name: sessionId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Session found
+        '404':
+          description: Session not found
+
+    put:
+      summary: Update session details
+      tags: [Session]
+      parameters:
+        - name: sessionId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                title:
+                  type: string
+                dateTime:
+                  type: string
+                  format: date-time
+                location:
+                  type: string
+      responses:
+        '200':
+          description: Session updated
+        '400':
+          description: Invalid update data
+
+    delete:
+      summary: Delete a session
+      tags: [Session]
+      parameters:
+        - name: sessionId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '204':
+          description: Session deleted
+        '404':
+          description: Session not found

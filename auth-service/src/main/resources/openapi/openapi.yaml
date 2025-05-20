@@ -1,0 +1,128 @@
+# OpenAPI Specification
+# This file defines the API contract for the application using the OpenAPI 3.0 standard.
+# It describes the available endpoints, request/response formats, and other API details.
+#
+# Key sections to include:
+# - `info`: Metadata about the API (e.g., title, version, description).
+# - `servers`: The base URLs for the API.
+# - `paths`: Definitions of the API endpoints and their operations.
+# - `components`: Reusable schemas, parameters, and responses.
+#
+# Add your API specification below:
+
+openapi: 3.0.0
+info:
+  title: Auth API
+  version: 1.0.0
+  description: API for user authentication and authorization.
+
+tags:
+  - name: Auth
+    description: Authentication operations
+
+paths:
+  /register:
+    post:
+      summary: Register a new user
+      tags:
+        - Auth
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                email:
+                  type: string
+                password:
+                  type: string
+                username:
+                  type: string
+      responses:
+        '200':
+          description: Registration successful
+        '400':
+          description: Invalid input
+
+  /verify:
+    post:
+      summary: Verify user's email
+      tags:
+        - Auth
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                token:
+                  type: string
+      responses:
+        '200':
+          description: Verification successful
+        '400':
+          description: Invalid token
+
+  /login:
+    post:
+      summary: Log in user
+      tags:
+        - Auth
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                email:
+                  type: string
+                password:
+                  type: string
+      responses:
+        '200':
+          description: Login successful
+        '401':
+          description: Unauthorized
+
+  /refresh:
+    post:
+      summary: Refresh JWT token
+      tags:
+        - Auth
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                refreshToken:
+                  type: string
+      responses:
+        '200':
+          description: Token refreshed successfully
+        '401':
+          description: Invalid refresh token
+
+  /logout:
+    post:
+      summary: Log out user
+      tags:
+        - Auth
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                refreshToken:
+                  type: string
+      responses:
+        '200':
+          description: Logout successful
+        '400':
+          description: Invalid token
