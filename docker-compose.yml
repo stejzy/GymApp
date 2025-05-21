@@ -25,11 +25,13 @@ services:
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8761/actuator/health"]
       interval: 10s
-      timeout: 5s
-      retries: 5
+      timeout: 3s
+      retries: 10
 
   config-server:
     build: ./config-server
+    ports:
+      - "8088:8088"
     networks:
       - gym-network
     depends_on:
@@ -41,12 +43,12 @@ services:
       - EUREKA_SERVER_URL=http://eureka-server:8761/eureka/
       - DB_USERNAME=${DB_USERNAME}
       - DB_PASSWORD=${DB_PASSWORD}
-      - POSTGRES_HOST=${POSTGRES_HOST}
+      - POSTGRES_HOST=postgres
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8088/actuator/health"]
       interval: 10s
-      timeout: 5s
-      retries: 5
+      timeout: 3s
+      retries: 10
 
   gateway-service:
     build: ./gateway-service
@@ -57,6 +59,8 @@ services:
     depends_on:
       config-server:
         condition: service_healthy
+      eureka-server:
+        condition: service_healthy
     environment:
       - EUREKA_SERVER_URL=http://eureka-server:8761/eureka/
 
@@ -65,52 +69,60 @@ services:
     networks:
       - gym-network
     depends_on:
-      gateway-service:
-        condition: service_started
+      config-server:
+        condition: service_healthy
+      eureka-server:
+        condition: service_healthy
     environment:
       - EUREKA_SERVER_URL=http://eureka-server:8761/eureka/
       - DB_USERNAME=${DB_USERNAME}
       - DB_PASSWORD=${DB_PASSWORD}
-      - POSTGRES_HOST=${POSTGRES_HOST}
+      - POSTGRES_HOST=postgres
 
   workout-generation-service:
     build: ./workout-generation-service
     networks:
       - gym-network
     depends_on:
-      gateway-service:
-        condition: service_started
+      config-server:
+        condition: service_healthy
+      eureka-server:
+        condition: service_healthy
     environment:
       - EUREKA_SERVER_URL=http://eureka-server:8761/eureka/
       - DB_USERNAME=${DB_USERNAME}
       - DB_PASSWORD=${DB_PASSWORD}
-      - POSTGRES_HOST=${POSTGRES_HOST}
+      - POSTGRES_HOST=postgres
 
   auth-service:
     build: ./auth-service
     networks:
       - gym-network
     depends_on:
-      gateway-service:
-        condition: service_started
+      config-server:
+        condition: service_healthy
+      eureka-server:
+        condition: service_healthy
     environment:
       - EUREKA_SERVER_URL=http://eureka-server:8761/eureka/
       - DB_USERNAME=${DB_USERNAME}
       - DB_PASSWORD=${DB_PASSWORD}
-      - POSTGRES_HOST=${POSTGRES_HOST}
+      - POSTGRES_HOST=postgres
 
   schedule-service:
     build: ./schedule-service
     networks:
       - gym-network
     depends_on:
-      gateway-service:
-        condition: service_started
+      config-server:
+        condition: service_healthy
+      eureka-server:
+        condition: service_healthy
     environment:
       - EUREKA_SERVER_URL=http://eureka-server:8761/eureka/
       - DB_USERNAME=${DB_USERNAME}
       - DB_PASSWORD=${DB_PASSWORD}
-      - POSTGRES_HOST=${POSTGRES_HOST}
+      - POSTGRES_HOST=postgres
 
 networks:
   gym-network:
