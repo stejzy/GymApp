@@ -1,0 +1,60 @@
+openapi: 3.0.3
+info:
+  title: Workout Plan API
+  version: 1.0.0
+  description: API do zarządzania planem treningowym
+
+paths:
+  /workout:
+    get:
+      summary: Pobierz plan treningowy na podstawie preferencji użytkownika i parametrów
+      parameters:
+      - in: query
+        name: exerciseType
+        description: Typ ćwiczeń (np. cardio, siłowe, mieszane)
+        required: false
+        schema:
+          type: string
+          enum: [cardio, siłowe, mieszane]
+
+      - in: query
+        name: duration
+        description: Czas trwania treningu w minutach
+        required: false
+        schema:
+          type: integer
+          minimum: 5
+          maximum: 180
+
+      - in: query
+        name: difficulty
+        description: Poziom trudności planu
+        required: false
+        schema:
+          type: string
+          enum: [łatwy, średni, trudny]
+      responses:
+        '200':
+          description: Plan treningowy znaleziony i zwrócony
+        '400':
+          description: Błędne zapytanie - złe parametry
+        '404':
+          description: Nie znaleziono planu spełniającego kryteria
+
+    post:
+      summary: Utwórz nowy plan treningowy
+      responses:
+        '201':
+          description: Plan treningowy został utworzony
+        '400':
+          description: Błędne dane wejściowe
+
+    put:
+      summary: Edytuj istniejący plan treningowy
+      responses:
+        '200':
+          description: Plan treningowy został zaktualizowany
+        '400':
+          description: Błędne dane wejściowe
+        '404':
+          description: Plan treningowy o podanym ID nie istnieje

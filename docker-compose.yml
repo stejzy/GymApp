@@ -1,0 +1,120 @@
+services:
+  postgres:
+    image: postgres:15
+    restart: always
+    networks:
+      - gym-network
+    environment:
+      POSTGRES_DB: gymapp
+      POSTGRES_USER: ${DB_USERNAME}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U gymuser" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  eureka-server:
+    build: ./eureka-server
+    ports:
+      - "8761:8761"
+    networks:
+      - gym-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8761/actuator/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  config-server:
+    build: ./config-server
+    networks:
+      - gym-network
+    depends_on:
+      eureka-server:
+        condition: service_healthy
+    volumes:
+      - ./config:/config
+    environment:
+      - EUREKA_SERVER_URL=http://eureka-server:8761/eureka/
+      - DB_USERNAME=${DB_USERNAME}
+      - DB_PASSWORD=${DB_PASSWORD}
+      - POSTGRES_HOST=${POSTGRES_HOST}
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8088/actuator/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  gateway-service:
+    build: ./gateway-service
+    ports:
+      - "8050:8050"
+    networks:
+      - gym-network
+    depends_on:
+      config-server:
+        condition: service_healthy
+    environment:
+      - EUREKA_SERVER_URL=http://eureka-server:8761/eureka/
+
+  user-service:
+    build: ./user-service
+    networks:
+      - gym-network
+    depends_on:
+      gateway-service:
+        condition: service_started
+    environment:
+      - EUREKA_SERVER_URL=http://eureka-server:8761/eureka/
+      - DB_USERNAME=${DB_USERNAME}
+      - DB_PASSWORD=${DB_PASSWORD}
+      - POSTGRES_HOST=${POSTGRES_HOST}
+
+  workout-generation-service:
+    build: ./workout-generation-service
+    networks:
+      - gym-network
+    depends_on:
+      gateway-service:
+        condition: service_started
+    environment:
+      - EUREKA_SERVER_URL=http://eureka-server:8761/eureka/
+      - DB_USERNAME=${DB_USERNAME}
+      - DB_PASSWORD=${DB_PASSWORD}
+      - POSTGRES_HOST=${POSTGRES_HOST}
+
+  auth-service:
+    build: ./auth-service
+    networks:
+      - gym-network
+    depends_on:
+      gateway-service:
+        condition: service_started
+    environment:
+      - EUREKA_SERVER_URL=http://eureka-server:8761/eureka/
+      - DB_USERNAME=${DB_USERNAME}
+      - DB_PASSWORD=${DB_PASSWORD}
+      - POSTGRES_HOST=${POSTGRES_HOST}
+
+  schedule-service:
+    build: ./schedule-service
+    networks:
+      - gym-network
+    depends_on:
+      gateway-service:
+        condition: service_started
+    environment:
+      - EUREKA_SERVER_URL=http://eureka-server:8761/eureka/
+      - DB_USERNAME=${DB_USERNAME}
+      - DB_PASSWORD=${DB_PASSWORD}
+      - POSTGRES_HOST=${POSTGRES_HOST}
+
+networks:
+  gym-network:
+    driver: bridge
+
+volumes:
+  pgdata:
