@@ -10,15 +10,18 @@ import reactor.core.publisher.Mono;
 import org.zzpj.gymapp.workoutgenerationservice.model.Exercise;
 import java.util.Collections;
 import java.util.List;
+import org.zzpj.gymapp.workoutgenerationservice.service.GenerationService;
 
 @RestController
 @RequestMapping("/api/workouts")
 public class WorkoutController {
     private final WorkoutService workoutService;
+    private final GenerationService generationService;
 
     @Autowired
-    public WorkoutController(WorkoutService workoutService) {
+    public WorkoutController(WorkoutService workoutService, GenerationService generationService) {
         this.workoutService = workoutService;
+        this.generationService = generationService;
     }
 
     @GetMapping
@@ -53,10 +56,60 @@ public class WorkoutController {
         return ResponseEntity.noContent().build();
     }
 
-//    @GetMapping("/exercises/wger")
-//    public Mono<ResponseEntity<List<Exercise>>> fetchExercisesFromWger() {
-//        return workoutService.fetchExercisesFromWger()
-//                .map(exercises -> ResponseEntity.ok(exercises))
-//                .onErrorReturn(ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(Collections.emptyList()));
-//    }
+    @GetMapping("/generateTest")
+    public ResponseEntity<String> generateTest() {
+        String result = generationService.generateText("test");
+        return ResponseEntity.ok(result);
+    }
+
+    @GetMapping("/exercises/wger")
+    public Mono<ResponseEntity<List<Exercise>>> fetchExercisesFromWger() {
+        System.out.println("fetchExercisesFromWger");
+        return workoutService.fetchExercisesFromWger()
+                .map(exercises -> ResponseEntity.ok(exercises))
+                .onErrorReturn(ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(Collections.emptyList()));
+    }
+
+    @GetMapping("/exercise/{id}")
+    public Mono<ResponseEntity<String>> getExerciseById(@PathVariable Long id) {
+        return workoutService.wgerTest(id)
+                .map(exercise -> ResponseEntity.ok(exercise))
+                .onErrorReturn(ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build());
+    }
+
+    @GetMapping("/wgerApiTest")
+    public Mono<ResponseEntity<String>> wgerApiTest() {
+        System.out.println("Testing wger API connection...");
+        return workoutService.wgerTest(9L) // Test z ID 1
+                .map(response -> ResponseEntity.ok("WGER API Connection SUCCESS: " + response))
+                .onErrorReturn(ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                        .body("WGER API Connection FAILED"));
+    }
+
+    @GetMapping("/connectionTest")
+    public Mono<ResponseEntity<String>> connectionTest() {
+        System.out.println("Testing basic internet connection...");
+        return workoutService.simpleConnectionTest()
+                .map(response -> ResponseEntity.ok("Internet Connection SUCCESS"))
+                .onErrorReturn(ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                        .body("Internet Connection FAILED"));
+    }
+
+    @GetMapping("/wgerBaseTest")
+    public Mono<ResponseEntity<String>> wgerBaseTest() {
+        System.out.println("Testing wger base API...");
+        return workoutService.testWgerApi()
+                .map(response -> ResponseEntity.ok("Wger Base API SUCCESS"))
+                .onErrorReturn(ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                        .body("Wger Base API FAILED"));
+    }
+
+    @GetMapping("/wgerStructureTest")
+    public Mono<ResponseEntity<String>> wgerStructureTest() {
+        System.out.println("Testing wger API structure...");
+        return workoutService.testWgerExerciseStructure()
+                .map(response -> ResponseEntity.ok("Wger Structure Test SUCCESS"))
+                .onErrorReturn(ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                        .body("Wger Structure Test FAILED"));
+    }
 } 
