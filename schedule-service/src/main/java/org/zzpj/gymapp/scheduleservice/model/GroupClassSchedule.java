@@ -1,12 +1,17 @@
 package org.zzpj.gymapp.scheduleservice.model;
 
 import jakarta.persistence.*;
+import lombok.Getter;
+import lombok.Setter;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
 @Entity
+@Setter
+@Getter
 public class GroupClassSchedule {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -32,4 +37,7 @@ public class GroupClassSchedule {
     )
     @Column(name = "user_id")
     private List<Long> participantIds = new ArrayList<>();
+
+    @Column(nullable = false)
+    private Integer capacity;
 }

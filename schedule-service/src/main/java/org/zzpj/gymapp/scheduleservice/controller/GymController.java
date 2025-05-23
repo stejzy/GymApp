@@ -8,6 +8,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.zzpj.gymapp.scheduleservice.dto.GymDTO;
+import org.zzpj.gymapp.scheduleservice.dto.GymGroupClassOfferingDTO;
 import org.zzpj.gymapp.scheduleservice.model.Gym;
 import org.zzpj.gymapp.scheduleservice.service.GymService;
 
@@ -33,4 +34,8 @@ public class GymController {
         return ResponseEntity.ok(gymService.getGymById(id));
     }
 
+    @GetMapping("/gyms/{id}/group-class-offerings")
+    public ResponseEntity<List<GymGroupClassOfferingDTO>> getGymGroupClassOfferings(@PathVariable Long id) {
+        return ResponseEntity.ok(gymService.getGymGroupClassOfferings(id));
+    }
 }

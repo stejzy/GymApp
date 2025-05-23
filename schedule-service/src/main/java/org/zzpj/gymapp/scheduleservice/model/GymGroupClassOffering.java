@@ -1,10 +1,19 @@
 package org.zzpj.gymapp.scheduleservice.model;
 
 import jakarta.persistence.*;
+import lombok.AllArgsConstructor;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
 
 import java.util.List;
 
 @Entity
+@Setter
+@Getter
+@AllArgsConstructor
+@NoArgsConstructor
+@Table(name = "gym_group_class_offering")
 public class GymGroupClassOffering {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

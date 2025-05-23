@@ -1,11 +1,11 @@
 package org.zzpj.gymapp.scheduleservice.service;
 
-import org.antlr.v4.runtime.misc.MultiMap;
-import org.springframework.http.ResponseEntity;
+import jakarta.persistence.EntityNotFoundException;
 import org.springframework.stereotype.Service;
 import org.zzpj.gymapp.scheduleservice.dto.GymDTO;
-import org.zzpj.gymapp.scheduleservice.exeption.GymNotFoundException;
+import org.zzpj.gymapp.scheduleservice.dto.GymGroupClassOfferingDTO;
 import org.zzpj.gymapp.scheduleservice.model.Gym;
+import org.zzpj.gymapp.scheduleservice.repository.GymGroupClassOfferingRepository;
 import org.zzpj.gymapp.scheduleservice.repository.GymRepository;
 
 import java.util.List;
@@ -14,15 +14,38 @@ import java.util.List;
 public class GymService {
 
     private final GymRepository gymRepository;
+    private final GymGroupClassOfferingRepository gymGroupClassOfferingRepository;
+    private final GymGroupClassOfferingService gymGroupClassOfferingService;
 
-    public GymService(GymRepository gymRepository) {
+    public GymService(GymRepository gymRepository,
+                      GymGroupClassOfferingRepository gymGroupClassOfferingRepository,
+                      GymGroupClassOfferingService gymGroupClassOfferingService) {
         this.gymRepository = gymRepository;
+        this.gymGroupClassOfferingRepository = gymGroupClassOfferingRepository;
+        this.gymGroupClassOfferingService = gymGroupClassOfferingService;
     }
 
     public List<GymDTO> getAllGyms() {
         return gymRepository.findAll()
                 .stream()
                 .map(this::mapToDTO)
+                .toList();
+    }
+
+    public GymDTO getGymById(Long id) {
+        return gymRepository.findById(id)
+                .map(this::mapToDTO)
+                .orElseThrow(() -> new EntityNotFoundException("Gym with ID " + id + " not found"));
+    }
+
+    public List<GymGroupClassOfferingDTO> getGymGroupClassOfferings(Long gymId) {
+        Gym gym = gymRepository.findById(gymId)
+                .orElseThrow(() -> new EntityNotFoundException("Gym with ID " + gymId + " not found"));
+
+        return gymGroupClassOfferingRepository.findByGym(gym)
+                .stream()
+                .map(gymGroupClassOfferingService::mapToDto
+                )
                 .toList();
     }
 
@@ -38,9 +61,4 @@ public class GymService {
         );
     }
 
-    public GymDTO getGymById(Long id) {
-        return gymRepository.findById(id)
-                .map(this::mapToDTO)
-                .orElseThrow(() -> new GymNotFoundException("Gym not found"));
-    }
 }
