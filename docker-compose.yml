@@ -82,6 +82,7 @@ services:
       - DB_USERNAME=${DB_USERNAME}
       - DB_PASSWORD=${DB_PASSWORD}
       - POSTGRES_HOST=postgres
+      - AUTH_BASE_URL=http://auth-service:8024
 
   workout-generation-service:
     build: ./workout-generation-service
@@ -97,6 +98,7 @@ services:
       - DB_USERNAME=${DB_USERNAME}
       - DB_PASSWORD=${DB_PASSWORD}
       - POSTGRES_HOST=postgres
+      - AUTH_BASE_URL=http://auth-service:8024
 
   auth-service:
     build: ./auth-service
@@ -128,6 +130,7 @@ services:
       - DB_USERNAME=${DB_USERNAME}
       - DB_PASSWORD=${DB_PASSWORD}
       - POSTGRES_HOST=postgres
+      - AUTH_BASE_URL=http://auth-service:8024
 
 networks:
   gym-network:

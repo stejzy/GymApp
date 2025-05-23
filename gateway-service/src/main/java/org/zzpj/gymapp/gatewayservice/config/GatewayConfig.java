@@ -25,7 +25,7 @@ public class GatewayConfig {
 
                 .route("user-service", r -> r.path("/api/user/**")
                         .filters(f -> f
-                                .stripPrefix(1)
+                                .stripPrefix(2)
                                 .filter(jwtAuthFilter.apply(new JwtAuthenticationGatewayFilterFactory.Config())))
                         .uri("lb://user-service"))
 
@@ -37,9 +37,9 @@ public class GatewayConfig {
 
                 .route("workout-generation-service", r -> r.path("/api/workout-generation/**")
                         .filters(f -> f
-                                .stripPrefix(1)
+                                .stripPrefix(2)
                                 .filter(jwtAuthFilter.apply(new JwtAuthenticationGatewayFilterFactory.Config())))
-                        .uri("lb://workout-generation"))
+                        .uri("lb://workout-generation-service"))
 
                 .build();
     }

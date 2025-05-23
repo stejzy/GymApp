@@ -29,7 +29,7 @@ public class AuthHealthIndicator implements HealthIndicator {
                     .uri("/actuator/health")
                     .retrieve()
                     .toBodilessEntity()
-                    .timeout(Duration.ofSeconds(5))
+                    .timeout(Duration.ofSeconds(15))
                     .block();
 
             return Health.up()
