@@ -35,6 +35,7 @@ import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.LoginUrlAuthenticationEntryPoint;
 import org.springframework.security.web.util.matcher.MediaTypeRequestMatcher;
 import org.zzpj.gymapp.authservice.security.CustomUserDetails;
+import org.springframework.beans.factory.annotation.Value;
 
 import java.security.KeyPair;
 import java.security.KeyPairGenerator;
@@ -47,6 +48,19 @@ import java.util.UUID;
 @Configuration
 @EnableWebSecurity
 public class AuthorizationServerConfig {
+
+    @Value("${gateway.base-url}")
+    private String gatewayBaseUrl;
+
+    @Value("${auth.base-url}")
+    private String authBaseUrl;
+
+    @Value("${oauth2.client.id}")
+    private String clientId;
+
+    @Value("${oauth2.client.secret}")
+    private String clientSecret;
+
 
     @Bean
     @Order(1)
@@ -69,9 +83,7 @@ public class AuthorizationServerConfig {
                                 new LoginUrlAuthenticationEntryPoint("/login"),
                                 new MediaTypeRequestMatcher(MediaType.TEXT_HTML)
                         )
-                )
-                .oauth2ResourceServer((resourceServer) -> resourceServer
-                        .jwt(Customizer.withDefaults()));
+                );
 
         return http.build();
     }
@@ -81,8 +93,14 @@ public class AuthorizationServerConfig {
     public SecurityFilterChain defaultSecurityFilterChain(HttpSecurity http)
             throws Exception {
         http
+                .csrf(AbstractHttpConfigurer::disable)
                 .authorizeHttpRequests((authorize) -> authorize
-                        .requestMatchers("/api/auth/register", "/api/auth/login", "/actuator/**", "/.well-known/**", "/error").permitAll()
+                        .requestMatchers(
+                            "/register",
+                            "/login",
+                            "/actuator/**",
+                            "/error"
+                        ).permitAll()
                         .anyRequest().authenticated()
                 )
                 .formLogin(Customizer.withDefaults())
@@ -94,21 +112,21 @@ public class AuthorizationServerConfig {
     @Bean
     public RegisteredClientRepository registeredClientRepository() {
         RegisteredClient oidcClient = RegisteredClient.withId(UUID.randomUUID().toString())
-                .clientId("gym-app-client")
-                .clientSecret(passwordEncoder().encode("gym-app-secret"))
+                .clientId(clientId)
+                .clientSecret(passwordEncoder().encode(clientSecret))
                 .clientAuthenticationMethod(ClientAuthenticationMethod.CLIENT_SECRET_BASIC)
                 .clientAuthenticationMethod(ClientAuthenticationMethod.CLIENT_SECRET_POST)
                 .clientAuthenticationMethod(ClientAuthenticationMethod.CLIENT_SECRET_JWT)
                 .authorizationGrantType(AuthorizationGrantType.AUTHORIZATION_CODE)
                 .authorizationGrantType(AuthorizationGrantType.REFRESH_TOKEN)
-                .redirectUri("http://localhost:8024/login/oauth2/code/gym-app")
-                .postLogoutRedirectUri("http://localhost:8024/")
+                .redirectUri(gatewayBaseUrl + "/api/auth/login/oauth2/code/gym-app")
+                .postLogoutRedirectUri(gatewayBaseUrl + "/api/auth")
                 .scope(OidcScopes.OPENID)
                 .scope(OidcScopes.PROFILE)
                 .scope("read")
                 .scope("write")
-                .clientSettings(ClientSettings.builder().
-                        requireAuthorizationConsent(false).build())
+                .clientSettings(ClientSettings.builder()
+                        .requireAuthorizationConsent(false).build())
                 .tokenSettings(TokenSettings.builder()
                         .accessTokenTimeToLive(Duration.ofHours(1))
                         .refreshTokenTimeToLive(Duration.ofDays(7))
@@ -152,7 +170,10 @@ public class AuthorizationServerConfig {
     @Bean
     public AuthorizationServerSettings authorizationServerSettings() {
         return AuthorizationServerSettings.builder()
-                .issuer("http://localhost:8024")
+                .issuer(authBaseUrl)
+                .authorizationEndpoint("/oauth2/authorize")
+                .tokenEndpoint("/oauth2/token")
+                .jwkSetEndpoint("/oauth2/jwks")
                 .build();
     }
 

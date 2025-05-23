@@ -11,7 +11,7 @@ services:
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:
-      test: [ "CMD-SHELL", "pg_isready -U", "${DB_USERNAME}" ]
+      test: ["CMD-SHELL", "pg_isready -U", "${DB_USERNAME}"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -63,6 +63,10 @@ services:
         condition: service_healthy
     environment:
       - EUREKA_SERVER_URL=http://eureka-server:8761/eureka/
+      - DB_USERNAME=${DB_USERNAME}
+      - DB_PASSWORD=${DB_PASSWORD}
+      - POSTGRES_HOST=postgres
+      - AUTH_BASE_URL=http://auth-service:8024
 
   user-service:
     build: ./user-service
@@ -108,6 +112,7 @@ services:
       - DB_USERNAME=${DB_USERNAME}
       - DB_PASSWORD=${DB_PASSWORD}
       - POSTGRES_HOST=postgres
+      - AUTH_BASE_URL=http://auth-service:8024
 
   schedule-service:
     build: ./schedule-service

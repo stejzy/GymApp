@@ -1,8 +1,6 @@
 package org.zzpj.gymapp.authservice.controller;
 
 import jakarta.validation.Valid;
-import org.slf4j.ILoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
@@ -20,7 +18,6 @@ import java.util.Map;
 import java.util.Set;
 
 @RestController
-@RequestMapping("/api/auth")
 public class AuthController {
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
