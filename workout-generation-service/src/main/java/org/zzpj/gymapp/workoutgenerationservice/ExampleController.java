@@ -1,9 +1,8 @@
 package org.zzpj.gymapp.workoutgenerationservice;
 
-import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RestController;
-import org.springframework.web.reactive.function.client.WebClient;
 import reactor.core.publisher.Mono;
 
 @RestController
@@ -16,8 +15,9 @@ public class ExampleController {
     }
 
     @GetMapping("/hello")
-    public Mono<String> helloWorld(){
-        return exampleService.helloWorld();
-    }
+    public Mono<String> helloWorld(@RequestHeader("Authorization") String authorizationHeader){
+        String jwtToken = authorizationHeader.substring(7);
 
+        return exampleService.helloWorld(jwtToken);
+    }
 }
