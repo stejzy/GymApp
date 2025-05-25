@@ -37,4 +37,8 @@ public interface RecurringGroupClassScheduleRepository extends JpaRepository<Rec
 
     List<RecurringGroupClassSchedule> findAllByGymGroupClassOffering_Gym_Id(Long gymId);
 
+    @Query("SELECT r FROM RecurringGroupClassSchedule r WHERE r.endDate >= :start AND r.startDate <= :end")
+    List<RecurringGroupClassSchedule> findActiveSchedules(@Param("start") LocalDate start, @Param("end") LocalDate end);
+
+
 }

@@ -13,6 +13,7 @@ import java.util.List;
 @Setter
 @Getter
 public class GroupClassSchedule {
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
@@ -20,6 +21,10 @@ public class GroupClassSchedule {
     @ManyToOne(optional = false)
     @JoinColumn(name = "gym_group_class_offering_id")
     private GymGroupClassOffering gymGroupClassOffering;
+
+    @ManyToOne
+    @JoinColumn(name = "recurring_schedule_id")
+    private RecurringGroupClassSchedule recurringGroupClassSchedule;
 
     @Column(name = "trainer_id", nullable = false)
     private Long trainerId;
@@ -41,3 +46,4 @@ public class GroupClassSchedule {
     @Column(nullable = false)
     private Integer capacity;
 }
+
