@@ -5,13 +5,16 @@ import org.springframework.stereotype.Service;
 import org.zzpj.gymapp.scheduleservice.dto.RequestRecurringGroupClassScheduleDTO;
 import org.zzpj.gymapp.scheduleservice.dto.ResponseRecurringGroupClassScheduleDTO;
 import org.zzpj.gymapp.scheduleservice.exeption.ScheduleConflictException;
+import org.zzpj.gymapp.scheduleservice.model.GroupClassSchedule;
 import org.zzpj.gymapp.scheduleservice.model.GymGroupClassOffering;
 import org.zzpj.gymapp.scheduleservice.model.RecurringGroupClassSchedule;
+import org.zzpj.gymapp.scheduleservice.repository.GroupClassScheduleRepository;
 import org.zzpj.gymapp.scheduleservice.repository.GymGroupClassOfferingRepository;
 import org.zzpj.gymapp.scheduleservice.repository.RecurringGroupClassScheduleRepository;
 
 import java.time.DayOfWeek;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.List;
 
@@ -20,18 +23,29 @@ public class RecurringGroupClassScheduleService {
     private final RecurringGroupClassScheduleRepository recurringGroupClassScheduleRepository;
     private final GymGroupClassOfferingRepository gymGroupClassOfferingRepository;
     private final GymGroupClassOfferingService gymGroupClassOfferingService;
+    private final GroupClassScheduleRepository groupClassScheduleRepository;
+    private final GroupClassScheduleGenerator groupClassScheduleGenerator;
 
     public RecurringGroupClassScheduleService(RecurringGroupClassScheduleRepository recurringGroupClassScheduleRepository,
                                               GymGroupClassOfferingService gymGroupClassOfferingService,
-                                              GymGroupClassOfferingRepository gymGroupClassOfferingRepository) {
+                                              GymGroupClassOfferingRepository gymGroupClassOfferingRepository,
+                                              GroupClassScheduleRepository groupClassScheduleRepository,
+                                              GroupClassScheduleGenerator groupClassScheduleGenerator) {
         this.recurringGroupClassScheduleRepository = recurringGroupClassScheduleRepository;
         this.gymGroupClassOfferingService = gymGroupClassOfferingService;
         this.gymGroupClassOfferingRepository = gymGroupClassOfferingRepository;
+        this.groupClassScheduleRepository = groupClassScheduleRepository;
+        this.groupClassScheduleGenerator = groupClassScheduleGenerator;
     }
 
     public ResponseRecurringGroupClassScheduleDTO addRecurringGroupClassSchedule(RequestRecurringGroupClassScheduleDTO dto) {
 
         RecurringGroupClassSchedule newGroupClasses = mapDtoToEntity(dto);
+
+        LocalDate tomorrow = LocalDate.now().plusDays(1);
+        if (newGroupClasses.getStartDate().isBefore(tomorrow)) {
+            throw new IllegalArgumentException("Start date must be at least tomorrow or later.");
+        }
 
         System.out.println("Zmapowało");
 
@@ -53,13 +67,26 @@ public class RecurringGroupClassScheduleService {
                     throw new ScheduleConflictException("Conflict with existing schedule on " + currentDate);
                 }
 
-                //NOTE_FOR_ME: Dodaj sprawdzanei kolizji z pojedynczymi zajęciami
+                // Konflikt z pojedynczymi zajęciami
+                LocalDateTime fullStart = LocalDateTime.of(currentDate, startTime);
+                LocalDateTime fullEnd = LocalDateTime.of(currentDate, endTime);
+
+                List<GroupClassSchedule> singleConflicts = groupClassScheduleRepository
+                        .findConflictingGroupSchedules(gymId, fullStart, fullEnd);
+
+                if (!singleConflicts.isEmpty()) {
+                    throw new ScheduleConflictException("Conflict with existing single schedule on " + currentDate);
+                }
             }
 
             currentDate = currentDate.plusDays(1);
         }
 
         recurringGroupClassScheduleRepository.save(newGroupClasses);
+
+        LocalDate now = LocalDate.now().plusDays(1); // od jutra
+        LocalDate oneMonthAhead = now.plusMonths(1);
+        groupClassScheduleGenerator.generateForRecurringSchedule(newGroupClasses, now, oneMonthAhead);
 
         return mapEntityToDto(newGroupClasses);
     }
@@ -88,6 +115,7 @@ public class RecurringGroupClassScheduleService {
         return new RecurringGroupClassSchedule(
                 null,
                 offering,
+                null,
                 dto.trainerId(),
                 dto.dayOfWeek(),
                 dto.startTime(),

@@ -7,6 +7,8 @@ import java.time.DayOfWeek;
 import java.time.Duration;
 import java.time.LocalDate;
 import java.time.LocalTime;
+import java.util.ArrayList;
+import java.util.List;
 
 @Entity
 @Setter
@@ -25,6 +27,9 @@ public class RecurringGroupClassSchedule {
     @ManyToOne(optional = false)
     @JoinColumn(name = "gym_group_class_offering_id")
     private GymGroupClassOffering gymGroupClassOffering;
+
+    @OneToMany(mappedBy = "recurringGroupClassSchedule", cascade = CascadeType.ALL)
+    private List<GroupClassSchedule> generatedSchedules = new ArrayList<>();
 
     @Column(name = "trainer_id", nullable = false)
     private Long trainerId;
