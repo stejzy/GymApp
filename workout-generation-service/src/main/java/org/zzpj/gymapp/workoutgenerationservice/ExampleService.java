@@ -13,12 +13,12 @@ public class ExampleService {
         this.webClient = webClientBuilder.build();
     }
 
-    public Mono<String> helloWorld(){
+    public Mono<String> helloWorld(String jwtToken) {
         return webClient.get()
-                .uri("http://user-service/api/helloWorld")
+                .uri("http://user-service/show")
+                .headers(headers -> headers.setBearerAuth(jwtToken))
                 .retrieve()
                 .bodyToMono(String.class)
                 .doOnError(e -> System.out.println("Błąd"));
     }
-
 }
