@@ -7,6 +7,8 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.reactive.function.client.WebClient;
+import org.springframework.web.reactive.function.client.WebClientResponseException;
 import org.zzpj.gymapp.authservice.dto.LoginRequest;
 import org.zzpj.gymapp.authservice.dto.RegisterRequest;
 import org.zzpj.gymapp.authservice.entity.Role;
@@ -21,12 +23,17 @@ import java.util.Set;
 public class AuthController {
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
+    //TODO change to variable in config
+    private final WebClient webClient = WebClient.builder()
+            .baseUrl("http://localhost:8021")
+            .build();
 
     public AuthController(UserRepository userRepository, PasswordEncoder passwordEncoder) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
     }
 
+    // @TODO move logic into AuthService and give errors more info
     @PostMapping("/register")
     public ResponseEntity<?> register (@Valid @RequestBody RegisterRequest request) {
         if (userRepository.existsByUsername(request.getUsername())) {
@@ -48,6 +55,23 @@ public class AuthController {
         user.setRoles(Set.of(role));
 
         userRepository.save(user);
+
+        try {
+            webClient.post()
+                .uri("/profile")
+                .bodyValue(Map.of("userId", user.getId()))
+                .retrieve()
+                .bodyToMono(Void.class)
+                .block();
+        } catch (WebClientResponseException ex) {
+            userRepository.delete(user);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("error", "User registered, but failed to create profile: " + ex.getResponseBodyAsString()));
+        } catch (Exception ex) {
+            userRepository.delete(user);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("error", "User registered, but failed to create profile: " + ex.getMessage()));
+        }
 
         Map<String, String> response = new HashMap<>();
         response.put("message", "User registered successfuly!");
