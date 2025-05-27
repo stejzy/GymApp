@@ -1,10 +1,7 @@
 package org.zzpj.gymapp.scheduleservice.model;
 
 import jakarta.persistence.*;
-import lombok.AllArgsConstructor;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
+import lombok.*;
 
 import java.time.DayOfWeek;
 import java.time.Duration;
@@ -15,6 +12,8 @@ import java.time.LocalTime;
 @Setter
 @Getter
 @AllArgsConstructor
+@ToString
+@EqualsAndHashCode
 @NoArgsConstructor
 @Table(name = "recurring_group_class_schedule")
 public class RecurringGroupClassSchedule {

@@ -1,6 +1,7 @@
 package org.zzpj.gymapp.scheduleservice.model;
 
 import jakarta.persistence.*;
+import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.Setter;
 import org.apache.catalina.LifecycleState;
@@ -12,6 +13,7 @@ import java.util.List;
 @Table(name = "gyms")
 @Getter
 @Setter
+@AllArgsConstructor
 public class Gym {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -44,4 +46,7 @@ public class Gym {
     @OneToMany(mappedBy = "gym")
     private List<GymGroupClassOffering> groupClassOfferings;
 
+    public Gym() {
+
+    }
 }
