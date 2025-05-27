@@ -43,18 +43,8 @@ public class WorkoutService {
 
     public Mono<List<Exercise>> fetchExercisesFromWger() {
         System.out.println("Fetching exercises from wger API...");
-        return webClient.get()
-                .uri("https://wger.de/api/v2/exercise/?language=2&limit=20") // language=2 for English, limit for demo
-                .retrieve()
-                .bodyToMono(String.class)
-                .doOnSuccess(response -> {
-                    System.out.println("Raw response from wger: " + response.substring(0, Math.min(500, response.length())));
-                })
-                .doOnError(error -> {
-                    System.err.println("Error fetching exercises: " + error.getMessage());
-                })
+        return fetchExercisesRawResponse()
                 .map(response -> {
-                    // Simple parsing, ideally use a DTO or JSON library
                     List<Exercise> exercises = new ArrayList<>();
                     try {
                         System.out.println("Parsing JSON response...");
@@ -66,7 +56,7 @@ public class WorkoutService {
                             System.out.println("Found " + results.length() + " results");
                             
                             // Log first object to see available fields
-                            if (results.length() > 0) {
+                            if (!results.isEmpty()) {
                                 org.json.JSONObject firstObj = results.getJSONObject(0);
                                 System.out.println("First object keys: " + firstObj.keySet());
                                 System.out.println("First object full: " + firstObj.toString());
@@ -74,20 +64,10 @@ public class WorkoutService {
                             
                             for (int i = 0; i < results.length(); i++) {
                                 org.json.JSONObject obj = results.getJSONObject(i);
-                                try {
-                                    Long id = obj.getLong("id");
-                                    String name = obj.optString("name", "Exercise " + id);
-                                    String description = obj.optString("description", "No description available");
-                                    
-                                    // Try other possible field names
-                                    if (obj.has("license_author")) {
-                                        name = "Exercise by " + obj.getString("license_author");
-                                    }
-                                    
-                                    exercises.add(new Exercise(id, name, description, 0, 0));
-                                    System.out.println("Added exercise: " + name);
-                                } catch (Exception e) {
-                                    System.err.println("Error processing exercise " + i + ": " + e.getMessage());
+                                Exercise exercise = parseJsonToExercise(obj);
+                                if (exercise != null) {
+                                    exercises.add(exercise);
+                                    System.out.println("Added exercise: " + exercise.getName());
                                 }
                             }
                         } else {
@@ -100,6 +80,58 @@ public class WorkoutService {
                     System.out.println("Returning " + exercises.size() + " exercises");
                     return exercises;
                 });
+    }
+
+    private Mono<String> fetchExercisesRawResponse() {
+        return webClient.get()
+                .uri("https://wger.de/api/v2/exerciseinfo/?language=2&limit=20")
+                .retrieve()
+                .bodyToMono(String.class)
+                .doOnSuccess(response -> {
+                    System.out.println("Raw response from wger exerciseinfo: " + response.substring(0, Math.min(500, response.length())));
+                })
+                .doOnError(error -> {
+                    System.err.println("Error fetching exercises: " + error.getMessage());
+                });
+    }
+
+    private Exercise parseJsonToExercise(org.json.JSONObject obj) {
+        try {
+            Long id = obj.getLong("id");
+            String name = "Exercise " + id; // default fallback
+            String description = "No description available"; // default fallback
+            
+            // Look for translations array
+            if (obj.has("translations")) {
+                org.json.JSONArray translations = obj.getJSONArray("translations");
+                
+                // Find English translation (language: 2)
+                for (int i = 0; i < translations.length(); i++) {
+                    org.json.JSONObject translation = translations.getJSONObject(i);
+                    
+                    // Check if this is English translation
+                    if (translation.has("language") && translation.getInt("language") == 2) {
+                        name = translation.optString("name", name);
+                        description = translation.optString("description", description);
+                        break; // Found English translation, stop looking
+                    }
+                }
+                
+                // If no English translation found, use first available translation
+                if (name.equals("Exercise " + id) && translations.length() > 0) {
+                    org.json.JSONObject firstTranslation = translations.getJSONObject(0);
+                    name = firstTranslation.optString("name", name);
+                    description = firstTranslation.optString("description", description);
+                    System.out.println("Used non-English translation for exercise " + id);
+                }
+            }
+            
+            System.out.println("Parsed exercise - ID: " + id + ", Name: " + name);
+            return new Exercise(id, name, description, 0, 0);
+        } catch (Exception e) {
+            System.err.println("Error processing exercise: " + e.getMessage());
+            return null;
+        }
     }
 
 //    public Mono<Exercise> wgerTest(Long exerciseId) {
