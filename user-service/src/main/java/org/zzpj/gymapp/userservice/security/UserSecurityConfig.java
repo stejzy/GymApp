@@ -23,6 +23,7 @@ public class UserSecurityConfig {
                 .csrf(AbstractHttpConfigurer::disable)
                 .authorizeHttpRequests((authorize) -> authorize
                         .requestMatchers("/actuator/**").permitAll()
+                        .requestMatchers(org.springframework.http.HttpMethod.POST, "/profiles").permitAll()
                         .anyRequest().authenticated()
                 )
                 .oauth2ResourceServer(oauth2 -> oauth2
