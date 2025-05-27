@@ -11,6 +11,7 @@ import org.zzpj.gymapp.workoutgenerationservice.model.Exercise;
 import java.util.Collections;
 import java.util.List;
 import org.zzpj.gymapp.workoutgenerationservice.service.GenerationService;
+import org.springframework.util.StringUtils;
 
 @RestController
 @RequestMapping("/api/workouts")
@@ -111,5 +112,71 @@ public class WorkoutController {
                 .map(response -> ResponseEntity.ok("Wger Structure Test SUCCESS"))
                 .onErrorReturn(ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                         .body("Wger Structure Test FAILED"));
+    }
+
+    @PostMapping("/generate")
+    public Mono<ResponseEntity<String>> generateWorkout(
+            @RequestParam(required = false, defaultValue = "intermediate") String level,
+            @RequestParam(required = false, defaultValue = "upper_body") String targetArea,
+            @RequestParam(required = false, defaultValue = "60") int durationMinutes) {
+        
+        System.out.println("Generating workout for level: " + level + ", target: " + targetArea + ", duration: " + durationMinutes + " minutes");
+        
+        return workoutService.fetchExercisesFromWger()
+                .map(exercises -> {
+                    if (exercises.isEmpty()) {
+                        return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
+                                .body("Unable to fetch exercises from external API");
+                    }
+                    
+                    // Przygotowanie promptu dla LLM z listą dostępnych ćwiczeń
+                    String exercisesList = formatExercisesForLLM(exercises);
+                    String prompt = buildWorkoutPrompt(level, targetArea, durationMinutes, exercisesList);
+                    
+                    // Generowanie treningu przez LLM
+                    String generatedWorkout = generationService.generateText(prompt);
+                    
+                    if (!StringUtils.hasText(generatedWorkout)) {
+                        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                                .body("Failed to generate workout");
+                    }
+                    
+                    return ResponseEntity.ok(generatedWorkout);
+                })
+                .onErrorReturn(ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                        .body("Error occurred while generating workout"));
+    }
+
+    private String formatExercisesForLLM(List<Exercise> exercises) {
+        StringBuilder sb = new StringBuilder();
+        sb.append("Available exercises:\n");
+        
+        for (Exercise exercise : exercises) {
+            sb.append("- ").append(exercise.getName())
+              .append(" (ID: ").append(exercise.getId()).append(")")
+              .append(" - ").append(exercise.getDescription())
+              .append("\n");
+        }
+        
+        return sb.toString();
+    }
+
+    private String buildWorkoutPrompt(String level, String targetArea, int durationMinutes, String exercisesList) {
+        return String.format(
+            "Create a detailed workout plan with the following requirements:\n" +
+            "- Fitness level: %s\n" +
+            "- Target area: %s\n" +
+            "- Duration: %d minutes\n" +
+            "- Use only exercises from the list below\n\n" +
+            "%s\n" +
+            "Please provide:\n" +
+            "1. A structured workout plan with exercise selection\n" +
+            "2. Number of sets and repetitions for each exercise\n" +
+            "3. Rest periods between exercises\n" +
+            "4. Warm-up and cool-down suggestions\n" +
+            "5. Total estimated time for the workout\n\n" +
+            "Format the response as a clear, easy-to-follow workout routine.",
+            level, targetArea, durationMinutes, exercisesList
+        );
     }
 } 
