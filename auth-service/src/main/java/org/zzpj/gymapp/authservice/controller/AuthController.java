@@ -28,6 +28,8 @@ public class AuthController {
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
 
+    private static final String ERROR = "error";
+
     private final WebClient webClient;
 
     public AuthController(UserRepository userRepository, PasswordEncoder passwordEncoder, @Value("${user.base-url}") String userBaseUrl) {
@@ -42,12 +44,12 @@ public class AuthController {
     public ResponseEntity<?> register (@Valid @RequestBody RegisterRequest request) {
         if (userRepository.existsByUsername(request.getUsername())) {
             return ResponseEntity.badRequest()
-                    .body(Map.of("error", "Username is already taken!"));
+                    .body(Map.of(ERROR, "Username is already taken!"));
         }
 
         if (userRepository.existsByEmail(request.getEmail())) {
             return ResponseEntity.badRequest()
-                    .body(Map.of("error", "Email is already in use!"));
+                    .body(Map.of(ERROR, "Email is already in use!"));
         }
 
         User user = new User();
@@ -70,11 +72,11 @@ public class AuthController {
         } catch (WebClientResponseException ex) {
             userRepository.delete(user);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(Map.of("error", "User registered, but failed to create profile: " + ex.getResponseBodyAsString()));
+                    .body(Map.of(ERROR, "User registered, but failed to create profile: " + ex.getResponseBodyAsString()));
         } catch (Exception ex) {
             userRepository.delete(user);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(Map.of("error", "User registered, but failed to create profile: " + ex.getMessage()));
+                    .body(Map.of(ERROR, "User registered, but failed to create profile: " + ex.getMessage()));
         }
 
         Map<String, String> response = new HashMap<>();

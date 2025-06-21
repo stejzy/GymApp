@@ -17,10 +17,7 @@ import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Schedulers;
 import org.springframework.core.ParameterizedTypeReference;
 
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @RestController
@@ -29,6 +26,8 @@ public class UserProfileController {
     private final UserProfileRepository userProfileRepository;
 
     private final WebClient authServiceClient;
+
+    private static final String AUTHORIZATION = "Authorization";
 
     public UserProfileController(UserProfileRepository userProfileRepository,
                                  WebClient.Builder webClientBuilder,
@@ -47,7 +46,7 @@ public class UserProfileController {
 
     @GetMapping("/{userId}")
     public Mono<ResponseEntity<UserProfileResponse>> getProfile(
-            @RequestHeader(name = "Authorization") String authHeader,
+            @RequestHeader(name = AUTHORIZATION) String authHeader,
             @PathVariable Long userId) {
 
         Mono<UserProfile> profileMono = Mono.fromCallable(() -> userProfileRepository.findByUserId(userId)
@@ -56,9 +55,10 @@ public class UserProfileController {
 
         Mono<Set<String>> rolesMono = authServiceClient.get()
                 .uri("/users/{userId}/roles", userId)
-                .header("Authorization", authHeader)
+                .header(AUTHORIZATION, authHeader)
                 .retrieve()
-                .bodyToMono(new ParameterizedTypeReference<Set<String>>() {});
+                .bodyToMono(new ParameterizedTypeReference<>() {
+                });
 
         return Mono.zip(profileMono, rolesMono)
                 .map(tuple -> {
@@ -87,7 +87,7 @@ public class UserProfileController {
     @GetMapping("/me")
     public Mono<ResponseEntity<UserProfileResponse>> getCurrentUserProfile(
             @RequestHeader("X-User-Id") Long userId,
-            @RequestHeader(name = "Authorization") String authHeader
+            @RequestHeader(name = AUTHORIZATION) String authHeader
     ) {
         return getProfile(authHeader, userId);
     }
@@ -95,27 +95,31 @@ public class UserProfileController {
     @PatchMapping("/me")
     public Mono<ResponseEntity<UserProfileResponse>> updateCurrentUserProfile(
             @RequestHeader("X-User-Id") Long userId,
-            @RequestHeader(name = "Authorization") String authHeader,
+            @RequestHeader(name = AUTHORIZATION) String authHeader,
             @RequestBody @Valid UpdateProfileRequest updateDto
     ) {
         return Mono.fromCallable(() -> {
                     UserProfile existing = userProfileRepository.findByUserId(userId)
                             .orElseThrow(() -> new RuntimeException("Profile not found for update"));
 
-                    if (updateDto.getFirstName() != null) existing.setFirstName(updateDto.getFirstName());
-                    if (updateDto.getLastName() != null) existing.setLastName(updateDto.getLastName());
-                    if (updateDto.getGender() != null) existing.setGender(updateDto.getGender());
-                    if (updateDto.getHeight() != null) existing.setHeight(updateDto.getHeight());
-                    if (updateDto.getWeight() != null) existing.setWeight(updateDto.getWeight());
-                    if (updateDto.getBirthday() != null) existing.setBirthday(updateDto.getBirthday());
-                    if (updateDto.getPhone() != null) existing.setPhone(updateDto.getPhone());
-                    if (updateDto.getLevel() != null) existing.setLevel(updateDto.getLevel());
-                    if (updateDto.getBio() != null) existing.setBio(updateDto.getBio());
-                    if (updateDto.getAvatarUrl() != null) existing.setAvatarUrl(updateDto.getAvatarUrl());
+                    applyUpdates(existing, updateDto);
 
                     return userProfileRepository.save(existing);
                 }).subscribeOn(Schedulers.boundedElastic())
                 .flatMap(updatedProfile -> getProfile(authHeader, updatedProfile.getUserId()));
+    }
+
+    private void applyUpdates(UserProfile profile, UpdateProfileRequest update) {
+        Optional.ofNullable(update.getFirstName()).ifPresent(profile::setFirstName);
+        Optional.ofNullable(update.getLastName()).ifPresent(profile::setLastName);
+        Optional.ofNullable(update.getGender()).ifPresent(profile::setGender);
+        Optional.ofNullable(update.getHeight()).ifPresent(profile::setHeight);
+        Optional.ofNullable(update.getWeight()).ifPresent(profile::setWeight);
+        Optional.ofNullable(update.getBirthday()).ifPresent(profile::setBirthday);
+        Optional.ofNullable(update.getPhone()).ifPresent(profile::setPhone);
+        Optional.ofNullable(update.getLevel()).ifPresent(profile::setLevel);
+        Optional.ofNullable(update.getBio()).ifPresent(profile::setBio);
+        Optional.ofNullable(update.getAvatarUrl()).ifPresent(profile::setAvatarUrl);
     }
 
 
@@ -140,7 +144,7 @@ public class UserProfileController {
 
     @GetMapping("/role/{role}")
     public Mono<ResponseEntity<List<UserProfileResponse>>> getProfilesByRole(
-            @RequestHeader(name = "Authorization") String authHeader,
+            @RequestHeader(name = AUTHORIZATION) String authHeader,
             @PathVariable String role,
             @RequestParam(value = "page", defaultValue = "0") int page,
             @RequestParam(value = "size", defaultValue = "20") int size) {
@@ -150,7 +154,7 @@ public class UserProfileController {
                         .queryParam("page", page)
                         .queryParam("size", size)
                         .build(role.toUpperCase()))
-                .header("Authorization", authHeader)
+                .header(AUTHORIZATION, authHeader)
                 .retrieve()
                 .bodyToFlux(Long.class)
                 .collectList()
@@ -168,7 +172,7 @@ public class UserProfileController {
                             .flatMap(userId -> {
                                 Mono<Set<String>> rolesMono = authServiceClient.get()
                                         .uri("/users/{userId}/roles", userId)
-                                        .header("Authorization", authHeader)
+                                        .header(AUTHORIZATION, authHeader)
                                         .retrieve()
                                         .bodyToMono(new ParameterizedTypeReference<Set<String>>() {})
                                         .onErrorReturn(Set.of());
