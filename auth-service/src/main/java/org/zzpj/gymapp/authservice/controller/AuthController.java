@@ -128,6 +128,13 @@ public class AuthController {
         return ResponseEntity.ok(userIds);
     }
 
+    @GetMapping("/users/{userId}/roles")
+    public ResponseEntity<Set<Role>> getUserRolesById(@PathVariable Long userId) {
+        return userRepository.findById(userId)
+                .map(user -> ResponseEntity.ok(user.getRoles()))
+                .orElseGet(() -> ResponseEntity.notFound().build());
+    }
+
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<?> handleValidationException(MethodArgumentNotValidException ex) {
         Map<String, String> errors = new HashMap<>();
