@@ -1,26 +1,37 @@
 package org.zzpj.gymapp.userservice.controller;
 
 import jakarta.validation.Valid;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.reactive.function.client.WebClient;
 import org.zzpj.gymapp.userservice.dto.CreateProfileRequest;
 import org.zzpj.gymapp.userservice.dto.UpdateProfileRequest;
 import org.zzpj.gymapp.userservice.dto.UserProfileResponse;
 import org.zzpj.gymapp.userservice.dto.UserProfileShortResponse;
 import org.zzpj.gymapp.userservice.entity.UserProfile;
 import org.zzpj.gymapp.userservice.repository.UserProfileRepository;
+import reactor.core.publisher.Mono;
+import reactor.core.scheduler.Schedulers;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/profile")
 public class UserProfileController {
     private final UserProfileRepository userProfileRepository;
 
-    public UserProfileController(UserProfileRepository userProfileRepository) {
+    private final WebClient authServiceClient;
+
+    public UserProfileController(UserProfileRepository userProfileRepository,
+                                 WebClient.Builder webClientBuilder,
+                                 @Value("${auth.base-url}") String authBaseUrl) {
         this.userProfileRepository = userProfileRepository;
+        this.authServiceClient = webClientBuilder.baseUrl(authBaseUrl).build();
     }
 
     @PostMapping
@@ -131,6 +142,48 @@ public class UserProfileController {
         ex.getBindingResult().getFieldErrors().forEach(error ->
                 errors.put(error.getField(), error.getDefaultMessage()));
         return ResponseEntity.badRequest().body(errors);
+    }
+
+    @GetMapping("/role/{role}")
+    public Mono<ResponseEntity<List<UserProfileResponse>>> getProfilesByRole(
+            @RequestHeader(name = "Authorization", required = false) String authHeader,
+            @PathVariable String role,
+            @RequestParam(value = "page", defaultValue = "0") int page,
+            @RequestParam(value = "size", defaultValue = "20") int size) {
+        return authServiceClient.get()
+                .uri(uriBuilder -> uriBuilder
+                        .path("/users/role/{role}")
+                        .queryParam("page", page)
+                        .queryParam("size", size)
+                        .build(role.toUpperCase()))
+                .header("Authorization", authHeader)
+                .retrieve()
+                .bodyToFlux(Long.class)
+                .collectList()
+                .publishOn(Schedulers.boundedElastic())
+                .map(userIds -> {
+                    if (userIds.isEmpty()) {
+                        return ResponseEntity.ok(List.of());
+                    }
+                    List<UserProfile> profiles = userProfileRepository.findByUserIdIn(userIds);
+                    List<UserProfileResponse> response = profiles.stream()
+                            .map(profile -> new UserProfileResponse(
+                                    profile.getId(),
+                                    profile.getUserId(),
+                                    profile.getFirstName(),
+                                    profile.getLastName(),
+                                    profile.getGender(),
+                                    profile.getHeight(),
+                                    profile.getWeight(),
+                                    profile.getBirthday(),
+                                    profile.getPhone(),
+                                    profile.getLevel(),
+                                    profile.getBio(),
+                                    profile.getAvatarUrl()
+                            ))
+                            .collect(Collectors.toList());
+                    return ResponseEntity.ok(response);
+                });
     }
 
 }
