@@ -1,6 +1,9 @@
 package org.zzpj.gymapp.authservice.controller;
 
 import jakarta.validation.Valid;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
@@ -16,6 +19,7 @@ import org.zzpj.gymapp.authservice.entity.User;
 import org.zzpj.gymapp.authservice.repository.UserRepository;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
@@ -23,17 +27,17 @@ import java.util.Set;
 public class AuthController {
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
-    //TODO change to variable in config
-    private final WebClient webClient = WebClient.builder()
-            .baseUrl("http://localhost:8021")
-            .build();
 
-    public AuthController(UserRepository userRepository, PasswordEncoder passwordEncoder) {
+    private final WebClient webClient;
+
+    public AuthController(UserRepository userRepository, PasswordEncoder passwordEncoder, @Value("${user.base-url}") String userBaseUrl) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
+        this.webClient = WebClient.builder()
+                .baseUrl(userBaseUrl)
+                .build();
     }
 
-    // @TODO move logic into AuthService and give errors more info
     @PostMapping("/register")
     public ResponseEntity<?> register (@Valid @RequestBody RegisterRequest request) {
         if (userRepository.existsByUsername(request.getUsername())) {
@@ -106,6 +110,22 @@ public class AuthController {
         userInfo.put("authorities", authentication.getAuthorities());
 
         return ResponseEntity.ok(userInfo);
+    }
+
+    @GetMapping("/users/role/{role}")
+    public ResponseEntity<List<Long>> getUserIdsByRole(
+            @PathVariable("role") String role,
+            @RequestParam(value = "page", defaultValue = "0") int page,
+            @RequestParam(value = "size", defaultValue = "20") int size) {
+        Role roleEnum;
+        try {
+            roleEnum = Role.valueOf(role.toUpperCase());
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().build();
+        }
+        Pageable pageable = PageRequest.of(page, size);
+        List<Long> userIds = userRepository.findUserIdsByRole(roleEnum, pageable);
+        return ResponseEntity.ok(userIds);
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)

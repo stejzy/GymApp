@@ -2,7 +2,6 @@ package org.zzpj.gymapp.userservice.controller;
 
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.*;
 import org.zzpj.gymapp.userservice.dto.CreateProfileRequest;
@@ -33,7 +32,6 @@ public class UserProfileController {
     }
 
     @GetMapping("/{userId}")
-    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<UserProfileResponse> getProfile(@PathVariable Long userId) {
         return userProfileRepository.findByUserId(userId)
                 .map(profile -> ResponseEntity.ok(
