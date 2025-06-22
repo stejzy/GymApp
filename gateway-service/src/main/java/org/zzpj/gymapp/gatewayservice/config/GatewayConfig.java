@@ -31,7 +31,7 @@ public class GatewayConfig {
 
                 .route("schedule-service", r -> r.path("/api/schedule/**")
                         .filters(f -> f
-                                .stripPrefix(1)
+                                .stripPrefix(2)
                                 .filter(jwtAuthFilter.apply(new JwtAuthenticationGatewayFilterFactory.Config())))
                         .uri("lb://schedule-service"))
 
@@ -40,7 +40,6 @@ public class GatewayConfig {
                                 .stripPrefix(2)
                                 .filter(jwtAuthFilter.apply(new JwtAuthenticationGatewayFilterFactory.Config())))
                         .uri("lb://workout-generation-service"))
-
                 .build();
     }
 }

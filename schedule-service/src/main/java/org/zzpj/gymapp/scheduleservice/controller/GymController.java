@@ -15,7 +15,7 @@ import org.zzpj.gymapp.scheduleservice.service.GymService;
 import java.util.List;
 
 @RestController
-@RequestMapping("/schedule")
+@RequestMapping("/gyms")
 public class GymController {
 
     private final GymService gymService;
@@ -24,17 +24,17 @@ public class GymController {
         this.gymService = gymService;
     }
 
-    @GetMapping("/gyms")
+    @GetMapping("")
     public ResponseEntity<List<GymDTO>> getAllGyms() {
         return ResponseEntity.ok(gymService.getAllGyms());
     }
 
-    @GetMapping("/gyms/{id}")
+    @GetMapping("/{id}")
     public ResponseEntity<GymDTO> getGymById(@PathVariable Long id) {
         return ResponseEntity.ok(gymService.getGymById(id));
     }
 
-    @GetMapping("/gyms/{id}/group-class-offerings")
+    @GetMapping("/{id}/group-class-offerings")
     public ResponseEntity<List<GymGroupClassOfferingDTO>> getGymGroupClassOfferings(@PathVariable Long id) {
         return ResponseEntity.ok(gymService.getGymGroupClassOfferings(id));
     }
