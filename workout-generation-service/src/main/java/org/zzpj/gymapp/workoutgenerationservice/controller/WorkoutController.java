@@ -8,10 +8,12 @@ import org.zzpj.gymapp.workoutgenerationservice.model.Workout;
 import org.zzpj.gymapp.workoutgenerationservice.service.WorkoutService;
 import reactor.core.publisher.Mono;
 import org.zzpj.gymapp.workoutgenerationservice.model.Exercise;
+import org.zzpj.gymapp.workoutgenerationservice.model.Muscles;
 import java.util.Collections;
 import java.util.List;
 import org.zzpj.gymapp.workoutgenerationservice.service.GenerationService;
 import org.springframework.util.StringUtils;
+import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/workouts")
@@ -71,6 +73,32 @@ public class WorkoutController {
                 .onErrorReturn(ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(Collections.emptyList()));
     }
 
+    @GetMapping("/exercises/wger/filter")
+    public Mono<ResponseEntity<List<Exercise>>> fetchExercisesFromWgerByMuscles(
+            @RequestParam List<String> muscleGroups) {
+        System.out.println("fetchExercisesFromWgerByMuscles with muscle groups: " + muscleGroups);
+        
+        List<Muscles> muscles = muscleGroups.stream()
+                .map(Muscles::fromString)
+                .filter(muscle -> muscle != null)
+                .collect(Collectors.toList());
+        
+        if (muscles.isEmpty()) {
+            return Mono.just(ResponseEntity.badRequest()
+                    .body(Collections.emptyList()));
+        }
+        
+        return workoutService.fetchExercisesFromWger(muscles)
+                .map(exercises -> ResponseEntity.ok(exercises))
+                .onErrorReturn(ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(Collections.emptyList()));
+    }
+
+    @GetMapping("/muscles")
+    public ResponseEntity<List<Muscles>> getAllAvailableMuscles() {
+        List<Muscles> muscles = workoutService.getAllAvailableMuscles();
+        return ResponseEntity.ok(muscles);
+    }
+
     @GetMapping("/exercise/{id}")
     public Mono<ResponseEntity<String>> getExerciseById(@PathVariable Long id) {
         return workoutService.wgerTest(id)
@@ -118,11 +146,23 @@ public class WorkoutController {
     public Mono<ResponseEntity<String>> generateWorkout(
             @RequestParam(required = false, defaultValue = "intermediate") String level,
             @RequestParam(required = false, defaultValue = "upper_body") String targetArea,
-            @RequestParam(required = false, defaultValue = "60") int durationMinutes) {
+            @RequestParam(required = false, defaultValue = "60") int durationMinutes,
+            @RequestParam(required = false) List<String> muscleGroups) {
         
-        System.out.println("Generating workout for level: " + level + ", target: " + targetArea + ", duration: " + durationMinutes + " minutes");
+        System.out.println("Generating workout for level: " + level + ", target: " + targetArea + 
+                ", duration: " + durationMinutes + " minutes, muscle groups: " + muscleGroups);
         
-        return workoutService.fetchExercisesFromWger()
+        final List<Muscles> muscles;
+        if (muscleGroups != null && !muscleGroups.isEmpty()) {
+            muscles = muscleGroups.stream()
+                    .map(Muscles::fromString)
+                    .filter(muscle -> muscle != null)
+                    .collect(Collectors.toList());
+        } else {
+            muscles = null;
+        }
+        
+        return workoutService.fetchExercisesFromWger(muscles)
                 .map(exercises -> {
                     if (exercises.isEmpty()) {
                         return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
@@ -131,7 +171,7 @@ public class WorkoutController {
                     
                     // Przygotowanie promptu dla LLM z listą dostępnych ćwiczeń
                     String exercisesList = formatExercisesForLLM(exercises);
-                    String prompt = buildWorkoutPrompt(level, targetArea, durationMinutes, exercisesList);
+                    String prompt = buildWorkoutPrompt(level, targetArea, durationMinutes, exercisesList, muscles);
                     
                     // Generowanie treningu przez LLM
                     String generatedWorkout = generationService.generateText(prompt);
@@ -154,29 +194,46 @@ public class WorkoutController {
         for (Exercise exercise : exercises) {
             sb.append("- ").append(exercise.getName())
               .append(" (ID: ").append(exercise.getId()).append(")")
-              .append(" - ").append(exercise.getDescription())
-              .append("\n");
+              .append(" - ").append(exercise.getDescription());
+            
+            if (exercise.getMuscles() != null && !exercise.getMuscles().isEmpty()) {
+                sb.append(" [Muscles: ").append(exercise.getMuscles().stream()
+                        .map(Muscles::getFriendlyName)
+                        .collect(Collectors.joining(", ")))
+                  .append("]");
+            }
+            
+            sb.append("\n");
         }
         
         return sb.toString();
     }
 
-    private String buildWorkoutPrompt(String level, String targetArea, int durationMinutes, String exercisesList) {
-        return String.format(
-            "Create a detailed workout plan with the following requirements:\n" +
-            "- Fitness level: %s\n" +
-            "- Target area: %s\n" +
-            "- Duration: %d minutes\n" +
-            "- Use only exercises from the list below\n\n" +
-            "%s\n" +
-            "Please provide:\n" +
-            "1. A structured workout plan with exercise selection\n" +
-            "2. Number of sets and repetitions for each exercise\n" +
-            "3. Rest periods between exercises\n" +
-            "4. Warm-up and cool-down suggestions\n" +
-            "5. Total estimated time for the workout\n\n" +
-            "Format the response as a clear, easy-to-follow workout routine.",
-            level, targetArea, durationMinutes, exercisesList
-        );
+    private String buildWorkoutPrompt(String level, String targetArea, int durationMinutes, String exercisesList, List<Muscles> muscleGroups) {
+        StringBuilder prompt = new StringBuilder();
+        prompt.append("Create a detailed workout plan with the following requirements:\n");
+        prompt.append("- Fitness level: ").append(level).append("\n");
+        prompt.append("- Target area: ").append(targetArea).append("\n");
+        prompt.append("- Duration: ").append(durationMinutes).append(" minutes\n");
+        
+        if (muscleGroups != null && !muscleGroups.isEmpty()) {
+            prompt.append("- Focus on these muscle groups: ")
+                  .append(muscleGroups.stream()
+                          .map(Muscles::getFriendlyName)
+                          .collect(Collectors.joining(", ")))
+                  .append("\n");
+        }
+        
+        prompt.append("- Use only exercises from the list below\n\n");
+        prompt.append(exercisesList).append("\n");
+        prompt.append("Please provide:\n");
+        prompt.append("1. A structured workout plan with exercise selection\n");
+        prompt.append("2. Number of sets and repetitions for each exercise\n");
+        prompt.append("3. Rest periods between exercises\n");
+        prompt.append("4. Warm-up and cool-down suggestions\n");
+        prompt.append("5. Total estimated time for the workout\n\n");
+        prompt.append("Format the response as a clear, easy-to-follow workout routine.");
+        
+        return prompt.toString();
     }
 } 

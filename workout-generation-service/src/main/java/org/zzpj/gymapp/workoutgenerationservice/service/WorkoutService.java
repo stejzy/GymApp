@@ -7,9 +7,11 @@ import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.web.reactive.function.client.WebClient;
 import reactor.core.publisher.Mono;
 import org.zzpj.gymapp.workoutgenerationservice.model.Exercise;
+import org.zzpj.gymapp.workoutgenerationservice.model.Muscles;
 
 import java.util.*;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.stream.Collectors;
 
 @Service
 public class WorkoutService {
@@ -42,26 +44,36 @@ public class WorkoutService {
     }
 
     public Mono<List<Exercise>> fetchExercisesFromWger() {
+        return fetchExercisesFromWger(null);
+    }
+
+    public Mono<List<Exercise>> fetchExercisesFromWger(List<Muscles> muscleGroups) {
         System.out.println("Fetching exercises from wger API...");
-        return fetchExercisesRawResponse()
+        if (muscleGroups != null && !muscleGroups.isEmpty()) {
+            System.out.println("Filtering by muscle groups: " + muscleGroups.stream()
+                    .map(Muscles::getFriendlyName)
+                    .collect(Collectors.joining(", ")));
+        }
+
+        return fetchExercisesRawResponse(muscleGroups)
                 .map(response -> {
                     List<Exercise> exercises = new ArrayList<>();
                     try {
                         System.out.println("Parsing JSON response...");
                         org.json.JSONObject json = new org.json.JSONObject(response);
                         System.out.println("JSON keys: " + json.keySet());
-                        
+
                         if (json.has("results")) {
                             org.json.JSONArray results = json.getJSONArray("results");
                             System.out.println("Found " + results.length() + " results");
-                            
+
                             // Log first object to see available fields
                             if (!results.isEmpty()) {
                                 org.json.JSONObject firstObj = results.getJSONObject(0);
                                 System.out.println("First object keys: " + firstObj.keySet());
                                 System.out.println("First object full: " + firstObj.toString());
                             }
-                            
+
                             for (int i = 0; i < results.length(); i++) {
                                 org.json.JSONObject obj = results.getJSONObject(i);
                                 Exercise exercise = parseJsonToExercise(obj);
@@ -83,8 +95,23 @@ public class WorkoutService {
     }
 
     private Mono<String> fetchExercisesRawResponse() {
+        return fetchExercisesRawResponse(null);
+    }
+
+    private Mono<String> fetchExercisesRawResponse(List<Muscles> muscleGroups) {
+        StringBuilder uriBuilder = new StringBuilder("https://wger.de/api/v2/exerciseinfo/?language=2&limit=20");
+
+        if (muscleGroups != null && !muscleGroups.isEmpty()) {
+            for (Muscles muscle : muscleGroups) {
+                uriBuilder.append("&muscles=").append(muscle.getId());
+            }
+        }
+
+        String uri = uriBuilder.toString();
+        System.out.println("Making request to: " + uri);
+
         return webClient.get()
-                .uri("https://wger.de/api/v2/exerciseinfo/?language=2&limit=20")
+                .uri(uri)
                 .retrieve()
                 .bodyToMono(String.class)
                 .doOnSuccess(response -> {
@@ -100,15 +127,41 @@ public class WorkoutService {
             Long id = obj.getLong("id");
             String name = "Exercise " + id; // default fallback
             String description = "No description available"; // default fallback
-            
+            List<Muscles> muscles = new ArrayList<>();
+
+            // Parse muscles
+            if (obj.has("muscles")) {
+                org.json.JSONArray musclesArray = obj.getJSONArray("muscles");
+                for (int i = 0; i < musclesArray.length(); i++) {
+                    org.json.JSONObject mObj = musclesArray.getJSONObject(i);
+                    int muscleId = mObj.getInt("id");
+                    Muscles muscle = findMuscleById(muscleId);
+                    if (muscle != null) {
+                        muscles.add(muscle);
+                    }
+                }
+            }
+
+            if (obj.has("muscles_secondary")) {
+                org.json.JSONArray secArray = obj.getJSONArray("muscles_secondary");
+                for (int i = 0; i < secArray.length(); i++) {
+                    org.json.JSONObject mObj = secArray.getJSONObject(i);
+                    int muscleId = mObj.getInt("id");
+                    Muscles muscle = findMuscleById(muscleId);
+                    if (muscle != null && !muscles.contains(muscle)) {
+                        muscles.add(muscle);
+                    }
+                }
+            }
+
             // Look for translations array
             if (obj.has("translations")) {
                 org.json.JSONArray translations = obj.getJSONArray("translations");
-                
+
                 // Find English translation (language: 2)
                 for (int i = 0; i < translations.length(); i++) {
                     org.json.JSONObject translation = translations.getJSONObject(i);
-                    
+
                     // Check if this is English translation
                     if (translation.has("language") && translation.getInt("language") == 2) {
                         name = translation.optString("name", name);
@@ -116,7 +169,7 @@ public class WorkoutService {
                         break; // Found English translation, stop looking
                     }
                 }
-                
+
                 // If no English translation found, use first available translation
                 if (name.equals("Exercise " + id) && translations.length() > 0) {
                     org.json.JSONObject firstTranslation = translations.getJSONObject(0);
@@ -125,16 +178,30 @@ public class WorkoutService {
                     System.out.println("Used non-English translation for exercise " + id);
                 }
             }
-            
-            System.out.println("Parsed exercise - ID: " + id + ", Name: " + name);
-            return new Exercise(id, name, description, 0, 0);
+
+            System.out.println("Parsed exercise - ID: " + id + ", Name: " + name + ", Muscles: " +
+                    muscles.stream().map(Muscles::getFriendlyName).collect(Collectors.joining(", ")));
+            return new Exercise(id, name, description, 0, 0, muscles);
         } catch (Exception e) {
             System.err.println("Error processing exercise: " + e.getMessage());
             return null;
         }
     }
 
-//    public Mono<Exercise> wgerTest(Long exerciseId) {
+    private Muscles findMuscleById(int muscleId) {
+        for (Muscles muscle : Muscles.values()) {
+            if (muscle.getId() == muscleId) {
+                return muscle;
+            }
+        }
+        return null;
+    }
+
+    public List<Muscles> getAllAvailableMuscles() {
+        return Arrays.asList(Muscles.values());
+    }
+
+    //    public Mono<Exercise> wgerTest(Long exerciseId) {
 //        return webClient.get()
 //                .uri("https://wger.de/api/v2/exercise/" + exerciseId) // language=2 for English
 //                .retrieve()
