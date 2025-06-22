@@ -5,7 +5,10 @@ import org.springframework.stereotype.Service;
 import org.zzpj.gymapp.scheduleservice.dto.RequestRecurringGroupClassScheduleDTO;
 import org.zzpj.gymapp.scheduleservice.dto.ResponseRecurringGroupClassScheduleDTO;
 import org.zzpj.gymapp.scheduleservice.exeption.ScheduleConflictException;
+import org.zzpj.gymapp.scheduleservice.exeption.TrainerBusyException;
+import org.zzpj.gymapp.scheduleservice.exeption.TrainerNotAssignedToGymException;
 import org.zzpj.gymapp.scheduleservice.model.GroupClassSchedule;
+import org.zzpj.gymapp.scheduleservice.model.Gym;
 import org.zzpj.gymapp.scheduleservice.model.GymGroupClassOffering;
 import org.zzpj.gymapp.scheduleservice.model.RecurringGroupClassSchedule;
 import org.zzpj.gymapp.scheduleservice.repository.GroupClassScheduleRepository;
@@ -25,17 +28,20 @@ public class RecurringGroupClassScheduleService {
     private final GymGroupClassOfferingService gymGroupClassOfferingService;
     private final GroupClassScheduleRepository groupClassScheduleRepository;
     private final GroupClassScheduleGenerator groupClassScheduleGenerator;
+    private  final TrainingSessionService trainingSessionService;
 
     public RecurringGroupClassScheduleService(RecurringGroupClassScheduleRepository recurringGroupClassScheduleRepository,
                                               GymGroupClassOfferingService gymGroupClassOfferingService,
                                               GymGroupClassOfferingRepository gymGroupClassOfferingRepository,
                                               GroupClassScheduleRepository groupClassScheduleRepository,
-                                              GroupClassScheduleGenerator groupClassScheduleGenerator) {
+                                              GroupClassScheduleGenerator groupClassScheduleGenerator,
+                                              TrainingSessionService trainingSessionService) {
         this.recurringGroupClassScheduleRepository = recurringGroupClassScheduleRepository;
         this.gymGroupClassOfferingService = gymGroupClassOfferingService;
         this.gymGroupClassOfferingRepository = gymGroupClassOfferingRepository;
         this.groupClassScheduleRepository = groupClassScheduleRepository;
         this.groupClassScheduleGenerator = groupClassScheduleGenerator;
+        this.trainingSessionService = trainingSessionService;
     }
 
     public ResponseRecurringGroupClassScheduleDTO addRecurringGroupClassSchedule(RequestRecurringGroupClassScheduleDTO dto) {
@@ -47,7 +53,12 @@ public class RecurringGroupClassScheduleService {
             throw new IllegalArgumentException("Start date must be at least tomorrow or later.");
         }
 
-        System.out.println("Zmapowało");
+        Long trainerId = newGroupClasses.getTrainerId();
+        Gym gym = newGroupClasses.getGymGroupClassOffering().getGym();
+
+        if (gym.getTrainerIds() == null || !gym.getTrainerIds().contains(trainerId)) {
+            throw new TrainerNotAssignedToGymException("Trener z ID " + trainerId + " nie jest przypisany do siłowni oferującej te zajęcia.");
+        }
 
         Long gymId = newGroupClasses.getGymGroupClassOffering().getGym().getId();
         DayOfWeek dayOfWeek = newGroupClasses.getDayOfWeek();
@@ -71,11 +82,19 @@ public class RecurringGroupClassScheduleService {
                 LocalDateTime fullStart = LocalDateTime.of(currentDate, startTime);
                 LocalDateTime fullEnd = LocalDateTime.of(currentDate, endTime);
 
+                System.out.println(fullStart);
+
                 List<GroupClassSchedule> singleConflicts = groupClassScheduleRepository
                         .findConflictingGroupSchedules(gymId, fullStart, fullEnd);
 
                 if (!singleConflicts.isEmpty()) {
                     throw new ScheduleConflictException("Conflict with existing single schedule on " + currentDate);
+                }
+
+                try {
+                    trainingSessionService.checkTrainerAvailability(trainerId, fullStart, fullEnd);
+                } catch (ScheduleConflictException e) {
+                    throw new TrainerBusyException("Trener jest zajęty w terminie: " + fullStart + " - " + fullEnd);
                 }
             }
 

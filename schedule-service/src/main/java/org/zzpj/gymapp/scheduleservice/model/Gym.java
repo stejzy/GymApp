@@ -38,10 +38,11 @@ public class Gym {
     @Column(name = "closing_hour")
     private LocalTime closingHour;
 
-    @ElementCollection
+    @ElementCollection(fetch = FetchType.EAGER)
     @CollectionTable(name = "gym_trainer_ids", joinColumns = @JoinColumn(name = "gym_id"))
     @Column(name = "trainer_id")
     private List<Long> trainerIds;
+
 
     @OneToMany(mappedBy = "gym")
     private List<GymGroupClassOffering> groupClassOfferings;
