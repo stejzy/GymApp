@@ -71,14 +71,14 @@ public class AuthorizationServerConfig {
 
         http
                 .securityMatcher(authorizationServerConfigurer.getEndpointsMatcher())
-                .with(authorizationServerConfigurer, (authorizationServer) ->
+                .with(authorizationServerConfigurer, authorizationServer ->
                         authorizationServer
                                 .oidc(Customizer.withDefaults())
                 )
-                .authorizeHttpRequests((authorize) -> authorize
+                .authorizeHttpRequests(authorize -> authorize
                         .anyRequest().authenticated()
                 )
-                .exceptionHandling((exceptions) -> exceptions
+                .exceptionHandling(exceptions -> exceptions
                         .defaultAuthenticationEntryPointFor(
                                 new LoginUrlAuthenticationEntryPoint("/login"),
                                 new MediaTypeRequestMatcher(MediaType.TEXT_HTML)
@@ -94,7 +94,7 @@ public class AuthorizationServerConfig {
             throws Exception {
         http
                 .csrf(AbstractHttpConfigurer::disable)
-                .authorizeHttpRequests((authorize) -> authorize
+                .authorizeHttpRequests(authorize -> authorize
                         .requestMatchers(
                             "/register",
                             "/login",

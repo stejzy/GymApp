@@ -2,9 +2,11 @@ package org.zzpj.gymapp.gatewayservice.service;
 
 import org.springframework.cloud.gateway.filter.GatewayFilter;
 import org.springframework.cloud.gateway.filter.factory.AbstractGatewayFilterFactory;
+import org.springframework.core.io.buffer.DataBuffer;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 
+import org.springframework.http.MediaType;
 import org.springframework.http.server.reactive.ServerHttpRequest;
 import org.springframework.http.server.reactive.ServerHttpResponse;
 import org.springframework.security.oauth2.jwt.Jwt;
@@ -13,6 +15,8 @@ import org.springframework.security.oauth2.jwt.JwtException;
 import org.springframework.stereotype.Component;
 import org.springframework.web.server.ServerWebExchange;
 import reactor.core.publisher.Mono;
+
+import java.nio.charset.StandardCharsets;
 
 @Component
 public class JwtAuthenticationGatewayFilterFactory extends AbstractGatewayFilterFactory<JwtAuthenticationGatewayFilterFactory.Config> {
@@ -65,10 +69,15 @@ public class JwtAuthenticationGatewayFilterFactory extends AbstractGatewayFilter
     private Mono<Void> onError(ServerWebExchange exchange, String err, HttpStatus httpStatus) {
         ServerHttpResponse response = exchange.getResponse();
         response.setStatusCode(httpStatus);
-        return response.setComplete();
+        response.getHeaders().setContentType(MediaType.APPLICATION_JSON);
+
+        String json = String.format("{\"error\": \"%s\"}", err);
+
+        DataBuffer buffer = response.bufferFactory().wrap(json.getBytes(StandardCharsets.UTF_8));
+        return response.writeWith(Mono.just(buffer));
     }
 
     public static class Config {
-
+        // This class is intentionally left blank
     }
 }

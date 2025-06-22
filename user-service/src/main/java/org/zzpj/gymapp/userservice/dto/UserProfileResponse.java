@@ -5,6 +5,7 @@ import lombok.Getter;
 import lombok.Setter;
 
 import java.time.LocalDate;
+import java.util.Set;
 
 @Setter
 @Getter
@@ -22,4 +23,5 @@ public class UserProfileResponse {
     private TrainingLevel level;
     private String bio;
     private String avatarUrl;
+    private Set<String> roles;
 }
