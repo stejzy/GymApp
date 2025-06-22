@@ -1,14 +1,13 @@
 package org.zzpj.gymapp.authservice.service;
 
+import feign.FeignException;
 import jakarta.validation.Valid;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.core.Authentication;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
-import org.springframework.web.reactive.function.client.WebClient;
-import org.springframework.web.reactive.function.client.WebClientResponseException;
+import org.zzpj.gymapp.authservice.client.UserClient;
 import org.zzpj.gymapp.authservice.dto.RegisterRequest;
 import org.zzpj.gymapp.authservice.entity.Role;
 import org.zzpj.gymapp.authservice.entity.User;
@@ -26,14 +25,12 @@ import java.util.List;
 public class AuthService {
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
-    private final WebClient webClient;
+    private final UserClient userClient;
 
-    public AuthService(UserRepository userRepository, PasswordEncoder passwordEncoder, @Value("${user.base-url}") String userBaseUrl) {
+    public AuthService(UserRepository userRepository, PasswordEncoder passwordEncoder, UserClient userClient) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
-        this.webClient = WebClient.builder()
-                .baseUrl(userBaseUrl)
-                .build();
+        this.userClient = userClient;
     }
 
     public void registerUser(@Valid RegisterRequest request) {
@@ -56,15 +53,10 @@ public class AuthService {
         userRepository.save(user);
 
         try {
-            webClient.post()
-                    .uri("/profile")
-                    .bodyValue(Map.of("userId", user.getId()))
-                    .retrieve()
-                    .bodyToMono(Void.class)
-                    .block();
-        } catch (WebClientResponseException ex) {
+            userClient.createProfile(Map.of("userId", user.getId()));
+        } catch (FeignException ex) {
             userRepository.delete(user);
-            throw new RuntimeException("User registered, but failed to create profile: " + ex.getResponseBodyAsString());
+            throw new RuntimeException("User registered, but failed to create profile: " + ex.contentUTF8());
         } catch (Exception ex) {
             userRepository.delete(user);
             throw new RuntimeException("User registered, but failed to create profile: " + ex.getMessage());
