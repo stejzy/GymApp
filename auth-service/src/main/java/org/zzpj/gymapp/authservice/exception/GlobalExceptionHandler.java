@@ -4,6 +4,8 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
+import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.validation.FieldError;
 
 import jakarta.servlet.http.HttpServletRequest;
 import java.net.URI;
@@ -53,6 +55,24 @@ public class GlobalExceptionHandler {
         problem.setTitle("Internal server error");
         problem.setDetail(ex.getMessage());
         problem.setInstance(URI.create(request.getRequestURI()));
+        return problem;
+    }
+
+    @ExceptionHandler(MethodArgumentNotValidException.class)
+    public ProblemDetail handleValidationException(MethodArgumentNotValidException ex, HttpServletRequest request) {
+        ProblemDetail problem = ProblemDetail.forStatus(HttpStatus.BAD_REQUEST);
+        problem.setTitle("Validation failed");
+        problem.setType(URI.create("https://example.com/probs/validation-error"));
+        problem.setInstance(URI.create(request.getRequestURI()));
+
+        StringBuilder details = new StringBuilder();
+        for (FieldError fieldError : ex.getBindingResult().getFieldErrors()) {
+            details.append(fieldError.getField())
+                   .append(": ")
+                   .append(fieldError.getDefaultMessage())
+                   .append("; ");
+        }
+        problem.setDetail(details.toString().trim());
         return problem;
     }
 } 
