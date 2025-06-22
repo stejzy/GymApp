@@ -4,7 +4,6 @@ import jakarta.persistence.*;
 import lombok.*;
 
 import java.time.DayOfWeek;
-import java.time.Duration;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.ArrayList;
@@ -34,7 +33,6 @@ public class RecurringGroupClassSchedule {
     @Column(name = "trainer_id", nullable = false)
     private Long trainerId;
 
-    // Dzień tygodnia i godzina rozpoczęcia
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private DayOfWeek dayOfWeek;
@@ -45,7 +43,6 @@ public class RecurringGroupClassSchedule {
     @Column(nullable = false)
     private LocalTime endTime;
 
-    // Data obowiązywania cykliczności
     @Column(nullable = false)
     private LocalDate startDate;
 

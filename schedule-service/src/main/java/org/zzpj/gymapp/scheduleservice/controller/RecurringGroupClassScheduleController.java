@@ -4,7 +4,6 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.zzpj.gymapp.scheduleservice.dto.RequestRecurringGroupClassScheduleDTO;
 import org.zzpj.gymapp.scheduleservice.dto.ResponseRecurringGroupClassScheduleDTO;
-import org.zzpj.gymapp.scheduleservice.model.RecurringGroupClassSchedule;
 import org.zzpj.gymapp.scheduleservice.service.RecurringGroupClassScheduleService;
 
 import java.util.List;

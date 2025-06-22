@@ -4,13 +4,9 @@ import io.cucumber.java.Before;
 import io.cucumber.java.en.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.test.web.client.TestRestTemplate;
 import org.springframework.boot.test.web.server.LocalServerPort;
-import org.springframework.context.annotation.Import;
 import org.springframework.http.ResponseEntity;
 import org.springframework.test.context.ActiveProfiles;
-import org.zzpj.gymapp.scheduleservice.ScheduleServiceApplication;
-import org.zzpj.gymapp.scheduleservice.dto.GymDTO;
 import org.zzpj.gymapp.scheduleservice.dto.RequestRecurringGroupClassScheduleDTO;
 import org.zzpj.gymapp.scheduleservice.dto.ResponseRecurringGroupClassScheduleDTO;
 import org.zzpj.gymapp.scheduleservice.model.GroupClassDefinition;
@@ -64,25 +60,20 @@ public class RecurringGroupClassScheduleSteps {
 
     @Given("a gym group class offering with id 1 exists")
     public void givenGymGroupClassOfferingExists() {
-        // Tworzenie i zapis definicji grupowych zajęć
         GroupClassDefinition definition = new GroupClassDefinition();
         definition.setName("Test group class");
         definition.setDescription("Opis testowych zajęć");
         groupClassDefinitionRepository.save(definition);
 
-        // Tworzenie i zapis przykładowej siłowni
         Gym gym = new Gym();
         gym.setName("Test Gym");
         gym.setAddress("Testowa 1, Wrocław");
         gymRepository.save(gym);
 
-        // Tworzenie i zapis oferty zajęć powiązanej z siłownią i definicją
         GymGroupClassOffering offering = new GymGroupClassOffering();
         offering.setGroupClassDefinition(definition);
         offering.setGym(gym);
         gymGroupClassOfferingRepository.save(offering);
-
-        // Jeśli chcesz zapamiętać ofertę do dalszego użycia (np. do StepDefinitionsContext), zrób to tutaj
     }
 
 
@@ -90,7 +81,7 @@ public class RecurringGroupClassScheduleSteps {
 
     @When("I add a recurring group class schedule with the following data:")
     public void whenIAddARecurringGroupClassScheduleWithTheFollowingData(io.cucumber.datatable.DataTable dataTable) {
-        Map<String, String> data = dataTable.asMaps().get(0);
+        Map<String, String> data = dataTable.asMaps().getFirst();
 
         LocalDate startDate = parseDateOrPlaceholder(data.get("startDate"));
         LocalDate endDate = parseDateOrPlaceholder(data.get("endDate"));
