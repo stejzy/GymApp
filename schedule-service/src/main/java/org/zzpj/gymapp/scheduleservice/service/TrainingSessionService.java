@@ -4,6 +4,7 @@ package org.zzpj.gymapp.scheduleservice.service;
 import jakarta.transaction.Transactional;
 import org.springframework.stereotype.Service;
 import org.zzpj.gymapp.scheduleservice.exeption.ScheduleConflictException;
+import org.zzpj.gymapp.scheduleservice.model.SessionType;
 import org.zzpj.gymapp.scheduleservice.model.TrainingSession;
 import org.zzpj.gymapp.scheduleservice.repository.TrainingSessionRepository;
 
@@ -19,27 +20,53 @@ public class TrainingSessionService {
         this.trainingSessionRepository = trainingSessionRepository;
     }
 
+    public void checkTrainerAvailability(Long trainerId, LocalDateTime start, LocalDateTime end) {
+        List<TrainingSession> conflicts = trainingSessionRepository.findTrainerConflicts(trainerId, start, end);
+        if (!conflicts.isEmpty()) {
+            throw new ScheduleConflictException("Trainer has another session at this time.");
+        }
+    }
+
+    public void checkUserAvailability(Long userId, LocalDateTime start, LocalDateTime end) {
+        List<TrainingSession> conflicts = trainingSessionRepository.findUserConflicts(userId, start, end);
+        if (!conflicts.isEmpty()) {
+            throw new ScheduleConflictException("User has another session at this time.");
+        }
+    }
+
     @Transactional
     public TrainingSession createTrainingSession(TrainingSession session) {
         LocalDateTime start = session.getStartTime();
         LocalDateTime end = session.getEndTime();
 
-        // Konflikt z trenerem
-        List<TrainingSession> trainerConflicts = trainingSessionRepository.findTrainerConflicts(
-                session.getTrainerId(), start, end);
-        if (!trainerConflicts.isEmpty()) {
-            throw new ScheduleConflictException("Trainer has another session at this time.");
+        if (start == null || end == null || session.getTrainerId() == null) {
+            throw new IllegalArgumentException("All session fields must be provided.");
+        }
+        if (!start.isBefore(end)) {
+            throw new IllegalArgumentException("Start time must be before end time.");
         }
 
-        // Konflikt z użytkownikiem
-        List<TrainingSession> userConflicts = trainingSessionRepository.findUserConflicts(
-                session.getUserId(), start, end);
-        if (!userConflicts.isEmpty()) {
-            throw new ScheduleConflictException("User has another session at this time.");
+        // Sprawdzenie konfliktów trenera, ale ignoruj konflikt jeśli to ta sama sesja grupowa
+        List<TrainingSession> trainerConflicts = trainingSessionRepository.findTrainerConflicts(session.getTrainerId(), start, end);
+        for (TrainingSession conflict : trainerConflicts) {
+            if (!(conflict.getClassId().equals(session.getClassId()) && conflict.getType() == SessionType.GROUP)) {
+                throw new ScheduleConflictException("Trainer has another session at this time.");
+            }
+        }
+
+        if (session.getUserId() != null) {
+            // Sprawdzenie konfliktów użytkownika, ale ignoruj konflikt jeśli to ta sama sesja grupowa
+            List<TrainingSession> userConflicts = trainingSessionRepository.findUserConflicts(session.getUserId(), start, end);
+            for (TrainingSession conflict : userConflicts) {
+                if (!(conflict.getClassId().equals(session.getClassId()) && conflict.getType() == SessionType.GROUP)) {
+                    throw new ScheduleConflictException("User has another session at this time.");
+                }
+            }
         }
 
         return trainingSessionRepository.save(session);
     }
+
 
     public List<TrainingSession> getAllSessionsForUser(Long userId) {
         return trainingSessionRepository.findAll()

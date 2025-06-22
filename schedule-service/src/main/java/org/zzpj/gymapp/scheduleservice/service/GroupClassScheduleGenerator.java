@@ -1,9 +1,9 @@
 package org.zzpj.gymapp.scheduleservice.service;
 
+import jakarta.transaction.Transactional;
 import org.springframework.stereotype.Service;
-import org.zzpj.gymapp.scheduleservice.model.Frequency;
-import org.zzpj.gymapp.scheduleservice.model.GroupClassSchedule;
-import org.zzpj.gymapp.scheduleservice.model.RecurringGroupClassSchedule;
+import org.zzpj.gymapp.scheduleservice.exeption.ScheduleConflictException;
+import org.zzpj.gymapp.scheduleservice.model.*;
 import org.zzpj.gymapp.scheduleservice.repository.GroupClassScheduleRepository;
 
 import java.time.LocalDate;
@@ -14,11 +14,15 @@ import java.util.List;
 public class GroupClassScheduleGenerator {
 
     private final GroupClassScheduleRepository groupClassScheduleRepository;
+    private final TrainingSessionService trainingSessionService;
 
-    public GroupClassScheduleGenerator(GroupClassScheduleRepository groupClassScheduleRepository) {
+    public GroupClassScheduleGenerator(GroupClassScheduleRepository groupClassScheduleRepository,
+                                       TrainingSessionService trainingSessionService) {
         this.groupClassScheduleRepository = groupClassScheduleRepository;
+        this.trainingSessionService = trainingSessionService;
     }
 
+    @Transactional
     public void generateForRecurringSchedule(RecurringGroupClassSchedule recurring, LocalDate fromDate, LocalDate toDate) {
         LocalDate start = fromDate.isBefore(recurring.getStartDate()) ? recurring.getStartDate() : fromDate;
         LocalDate end = toDate.isAfter(recurring.getEndDate()) ? recurring.getEndDate() : toDate;
@@ -60,6 +64,17 @@ public class GroupClassScheduleGenerator {
                     newSchedule.setGymGroupClassOffering(recurring.getGymGroupClassOffering());
 
                     groupClassScheduleRepository.save(newSchedule);
+
+                    TrainingSession session = new TrainingSession();
+                    session.setTrainerId(recurring.getTrainerId());
+                    session.setUserId(null);
+                    session.setStartTime(fullStart);
+                    session.setEndTime(fullEnd);
+                    session.setClassId(newSchedule.getId());
+                    session.setType(SessionType.GROUP);
+
+                    // Jeśli utworzenie sesji rzuci wyjątek, wszystko się wycofa, łącznie z zapisem newSchedule
+                    trainingSessionService.createTrainingSession(session);
                 }
             }
 
