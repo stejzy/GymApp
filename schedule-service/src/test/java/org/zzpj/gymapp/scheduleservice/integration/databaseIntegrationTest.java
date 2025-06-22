@@ -5,10 +5,19 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.server.LocalServerPort;
+import org.springframework.context.annotation.Import;
+import org.springframework.core.ParameterizedTypeReference;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpMethod;
+import org.springframework.http.ResponseEntity;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.jdbc.Sql;
+//import org.springframework.web.client.RestTemplate;
+import org.springframework.boot.test.web.client.TestRestTemplate;
 import org.springframework.web.client.RestTemplate;
 import org.zzpj.gymapp.scheduleservice.dto.*;
 import org.zzpj.gymapp.scheduleservice.model.*;
@@ -20,21 +29,17 @@ import org.zzpj.gymapp.scheduleservice.repository.RecurringGroupClassScheduleRep
 import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.LocalTime;
+import java.util.ArrayList;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
 
+@ActiveProfiles("test")
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 @SpringBootTest(
-        webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
-        properties = {
-                "spring.cloud.config.enabled=false",
-                "spring.config.import=",
-                "eureka.client.enabled=false"
-        }
+        webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT
 )
-@ActiveProfiles("test")
-class test2 {
+class databaseIntegrationTest {
 
     @LocalServerPort
     private int port;
@@ -115,6 +120,7 @@ class test2 {
         RecurringGroupClassSchedule class1 = new RecurringGroupClassSchedule( //id = 1
                 null,
                 offering1,
+                null,
                 2L,
                 DayOfWeek.MONDAY,
                 LocalTime.of(10, 0),
@@ -128,6 +134,7 @@ class test2 {
         RecurringGroupClassSchedule class2 = new RecurringGroupClassSchedule( //id = 2
                 null,
                 offering2,
+                null,
                 2L,
                 DayOfWeek.MONDAY,
                 LocalTime.of(14, 0),
@@ -158,18 +165,16 @@ class test2 {
                 DayOfWeek.MONDAY,
                 LocalTime.of(8, 0),
                 LocalTime.of(9, 0),
-                LocalDate.of(2024, 6, 3),
-                LocalDate.of(2024, 6, 24),
+                LocalDate.of(2026, 6, 3),
+                LocalDate.of(2026, 6, 24),
                 Frequency.WEEKLY,
                 12
         );
 
-
         ResponseRecurringGroupClassScheduleDTO response = restTemplate.postForObject(
-            baseUrl + "/add-recurring-group-class",
-            requestDto,
-            ResponseRecurringGroupClassScheduleDTO.class
-        );
+                baseUrl + "/add-recurring-group-class",
+                requestDto,
+                ResponseRecurringGroupClassScheduleDTO.class);
 
         assertEquals(3L, response.id());
         assertEquals(requestDto.capacity(), response.capacity());
@@ -180,7 +185,6 @@ class test2 {
     public void getAllRecurringGroupClassesTest(){
         List<RecurringGroupClassSchedule> response = restTemplate.getForObject(baseUrl
                 + "/get-all-recurring-group-classes", List.class);
-
         assertEquals(2, recurringGroupClassScheduleRepository.findAll().size());
         assertEquals(response.size(), recurringGroupClassScheduleRepository.findAll().size());
     }
