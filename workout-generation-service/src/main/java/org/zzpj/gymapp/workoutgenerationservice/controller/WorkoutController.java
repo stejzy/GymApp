@@ -26,6 +26,8 @@ public class WorkoutController {
     private final GenerationService generationService;
     Logger logger = LoggerFactory.getLogger(WorkoutController.class);
 
+
+
     @Autowired
     public WorkoutController(WorkoutService workoutService, GenerationService generationService) {
         this.workoutService = workoutService;
@@ -64,11 +66,6 @@ public class WorkoutController {
         return ResponseEntity.noContent().build();
     }
 
-    @GetMapping("/generateTest")
-    public ResponseEntity<String> generateTest() {
-        return ResponseEntity.ok("ok");
-    }
-
     @GetMapping("/exercises/wger")
     public Mono<ResponseEntity<List<Exercise>>> fetchExercisesFromWger() {
         logger.info("fetchExercisesFromWger");
@@ -103,49 +100,6 @@ public class WorkoutController {
         return ResponseEntity.ok(muscles);
     }
 
-    @GetMapping("/exercise/{id}")
-    public Mono<ResponseEntity<String>> getExerciseById(@PathVariable Long id) {
-        return workoutService.wgerTest(id)
-                .map(exercise -> ResponseEntity.ok(exercise))
-                .onErrorReturn(ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build());
-    }
-
-    @GetMapping("/wgerApiTest")
-    public Mono<ResponseEntity<String>> wgerApiTest() {
-        logger.info("Testing wger API connection...");
-        return workoutService.wgerTest(9L) // Test z ID 1
-                .map(response -> ResponseEntity.ok("WGER API Connection SUCCESS: " + response))
-                .onErrorReturn(ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                        .body("WGER API Connection FAILED"));
-    }
-
-    @GetMapping("/connectionTest")
-    public Mono<ResponseEntity<String>> connectionTest() {
-        logger.info("Testing basic internet connection...");
-        return workoutService.simpleConnectionTest()
-                .map(response -> ResponseEntity.ok("Internet Connection SUCCESS"))
-                .onErrorReturn(ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                        .body("Internet Connection FAILED"));
-    }
-
-    @GetMapping("/wgerBaseTest")
-    public Mono<ResponseEntity<String>> wgerBaseTest() {
-        logger.info("Testing wger base API...");
-        return workoutService.testWgerApi()
-                .map(response -> ResponseEntity.ok("Wger Base API SUCCESS"))
-                .onErrorReturn(ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                        .body("Wger Base API FAILED"));
-    }
-
-    @GetMapping("/wgerStructureTest")
-    public Mono<ResponseEntity<String>> wgerStructureTest() {
-        logger.info("Testing wger API structure...");
-        return workoutService.testWgerExerciseStructure()
-                .map(response -> ResponseEntity.ok("Wger Structure Test SUCCESS"))
-                .onErrorReturn(ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                        .body("Wger Structure Test FAILED"));
-    }
-
     @PostMapping("/generate")
     public Mono<ResponseEntity<Workout>> generateWorkout(
             @RequestParam(defaultValue = "strength") String targetArea,
@@ -168,9 +122,12 @@ public class WorkoutController {
                 }
                 Goal goalEnum = Goal.fromString(targetArea);
 
-                return Mono.fromCallable(() ->
-                        generationService.generateWorkout(candidates, authHeader, userId, goalEnum, durationMinutes)
-                    )
+                return Mono.fromCallable(() -> {
+                        Workout generated = generationService.generateWorkout(candidates, authHeader, userId, goalEnum, durationMinutes);
+                        // Dodaj wygenerowany workout do listy i nadaj mu id
+                        Workout created = workoutService.createWorkout(generated);
+                        return created;
+                    })
                     .subscribeOn(Schedulers.boundedElastic())
                     .map(workout -> ResponseEntity.ok(workout))
                     .onErrorReturn(ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build());

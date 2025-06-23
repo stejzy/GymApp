@@ -200,43 +200,4 @@ public class WorkoutService {
                 .doOnSuccess(response -> logger.info("Success: {}", response.substring(0, Math.min(100, response.length()))))
                 .doOnError(error -> logger.error("Error occurred: {}", error.getMessage()));
     }
-
-    public Mono<String> simpleConnectionTest() {
-        logger.info("Testing simple HTTP connection...");
-        return webClient.get()
-                .uri("https://httpbin.org/get")
-                .retrieve()
-                .bodyToMono(String.class)
-                .doOnSuccess(_ -> logger.info("Simple connection SUCCESS"))
-                .doOnError(error -> logger.error("Simple connection FAILED: {}", error.getMessage()));
-    }
-
-    public Mono<String> testWgerApi() {
-        logger.info("Testing wger base API...");
-        return webClient.get()
-                .uri("https://wger.de/api/v2/")
-                .retrieve()
-                .bodyToMono(String.class)
-                .doOnSuccess(_ -> logger.info("Wger base API SUCCESS"))
-                .doOnError(error -> logger.error("Wger base API FAILED: {}", error.getMessage()));
-    }
-
-    public Mono<String> testWgerExerciseStructure() {
-        logger.info("Testing different wger endpoints...");
-        return webClient.get()
-                .uri("https://wger.de/api/v2/exerciseinfo/?language=2&limit=5")
-                .retrieve()
-                .bodyToMono(String.class)
-                .doOnSuccess(response -> logger.info("ExerciseInfo response: {}", response.substring(0, Math.min(300, response.length()))))
-                .doOnError(error -> {
-                    logger.error("ExerciseInfo failed, trying exercise translation...");
-                    webClient.get()
-                            .uri("https://wger.de/api/v2/exercisetranslation/?language=2&limit=5")
-                            .retrieve()
-                            .bodyToMono(String.class)
-                            .doOnSuccess(resp -> logger.info("ExerciseTranslation response: {}", resp.substring(0, Math.min(300, resp.length()))))
-                            .doOnError(err -> logger.error("ExerciseTranslation also failed: {}", err.getMessage()))
-                            .subscribe();
-                });
-    }
 } 

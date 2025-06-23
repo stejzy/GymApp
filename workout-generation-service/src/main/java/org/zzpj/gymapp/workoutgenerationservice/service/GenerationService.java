@@ -98,7 +98,6 @@ public class GenerationService {
                                level,
                                goal);
         } catch (Exception e) {
-            e.printStackTrace();
             throw new IllegalArgumentException("Failed to parse OpenAI response: " + content, e);
         }
     }
@@ -132,7 +131,8 @@ public class GenerationService {
         sb.append(". Respond with a JSON object only, with keys, without comments:\n")
           .append("- workoutName (string)\n")
           .append("- workoutDescription (string)\n")
-          .append("- exercises (array of objects with id (int), sets (int), repetitions (int), weight in kg (int)\n")
+          .append("- exercises (array of objects with id (int), sets (int), repetitions (int), weight (int, required, in kg, do not leave empty or null))\n")
+          .append("Each exercise object must include a 'weight' field (integer, in kg, required for every exercise, do not leave it empty or null).\n")
           .append("Example:\n{\n  \"workoutName\": \"...\",\n  \"workoutDescription\": \"...\",\n  \"exercises\": [ { \"id\":1, \"sets\":3, \"repetitions\":12, \"weight\":50 }, { \"id\":2, \"sets\":3, \"repetitions\":10, \"weight\":20 } ]\n}");
         return sb.toString();
     }
