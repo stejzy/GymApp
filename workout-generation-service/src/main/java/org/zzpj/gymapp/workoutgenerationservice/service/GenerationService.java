@@ -9,15 +9,11 @@ import com.openai.models.chat.completions.ChatCompletion;
 import com.openai.models.chat.completions.ChatCompletionCreateParams;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.zzpj.gymapp.workoutgenerationservice.client.UserServiceClient;
 import org.zzpj.gymapp.workoutgenerationservice.dto.UserProfileDTO;
-import org.zzpj.gymapp.workoutgenerationservice.model.Exercise;
-import org.zzpj.gymapp.workoutgenerationservice.model.ExperienceLevel;
-import org.zzpj.gymapp.workoutgenerationservice.model.Goal;
-import org.zzpj.gymapp.workoutgenerationservice.model.Workout;
+import org.zzpj.gymapp.workoutgenerationservice.model.*;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -48,7 +44,7 @@ public class GenerationService {
         UserProfileDTO profile = userServiceClient.getUserProfile(authHeader, userId);
 
         if (profile.getLevel() == null ) {
-            throw new Exception(String.format("User %s has no level", userId));
+            throw new IllegalArgumentException(String.format("User %s has no level", userId));
         }
         ExperienceLevel level = ExperienceLevel.valueOf(profile.getLevel().toUpperCase());
 
@@ -82,8 +78,6 @@ public class GenerationService {
                     weight = weightNode.asInt();
                 } else {
                     weight = 0;
-                    if (weightNode.isTextual() && weightNode.asText().equalsIgnoreCase("bodyweight")) {
-                    }
                 }
 
                 candidates.stream()
@@ -104,8 +98,7 @@ public class GenerationService {
                                level,
                                goal);
         } catch (Exception e) {
-            e.printStackTrace();
-            throw new RuntimeException("Failed to parse OpenAI response: " + content, e);
+            throw new IllegalArgumentException("Failed to parse OpenAI response: " + content, e);
         }
     }
 
@@ -120,7 +113,7 @@ public class GenerationService {
             sb.append(ex.getId()).append(": ")
               .append(ex.getName())
               .append(" (" + ex.getMuscles().stream()
-                                  .map(m -> m.getFriendlyName())
+                                  .map(Muscles::getFriendlyName)
                                   .collect(Collectors.joining(", ")) + ")\n");
         }
         sb.append("\nCreate a workout plan for a user with the following profile: ");
@@ -138,7 +131,8 @@ public class GenerationService {
         sb.append(". Respond with a JSON object only, with keys, without comments:\n")
           .append("- workoutName (string)\n")
           .append("- workoutDescription (string)\n")
-          .append("- exercises (array of objects with id (int), sets (int), repetitions (int), weight in kg (int)\n")
+          .append("- exercises (array of objects with id (int), sets (int), repetitions (int), weight (int, required, in kg, do not leave empty or null))\n")
+          .append("Each exercise object must include a 'weight' field (integer, in kg, required for every exercise, do not leave it empty or null).\n")
           .append("Example:\n{\n  \"workoutName\": \"...\",\n  \"workoutDescription\": \"...\",\n  \"exercises\": [ { \"id\":1, \"sets\":3, \"repetitions\":12, \"weight\":50 }, { \"id\":2, \"sets\":3, \"repetitions\":10, \"weight\":20 } ]\n}");
         return sb.toString();
     }

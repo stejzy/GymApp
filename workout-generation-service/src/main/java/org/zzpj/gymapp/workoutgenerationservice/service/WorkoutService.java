@@ -71,7 +71,6 @@ public class WorkoutService {
                             org.json.JSONArray results = json.getJSONArray("results");
                             logger.info("Found {} results", results.length());
 
-                            // Log first object to see available fields
                             if (!results.isEmpty()) {
                                 org.json.JSONObject firstObj = results.getJSONObject(0);
                                 logger.info("First object keys: {}", firstObj.keySet());
@@ -98,9 +97,6 @@ public class WorkoutService {
                 });
     }
 
-    private Mono<String> fetchExercisesRawResponse() {
-        return fetchExercisesRawResponse(null);
-    }
 
     private Mono<String> fetchExercisesRawResponse(List<Muscles> muscleGroups) {
         StringBuilder uriBuilder = new StringBuilder("https://wger.de/api/v2/exerciseinfo/?language=2&limit=100");
@@ -118,12 +114,8 @@ public class WorkoutService {
                 .uri(uri)
                 .retrieve()
                 .bodyToMono(String.class)
-                .doOnSuccess(response -> {
-                    logger.info("Raw response from wger exerciseinfo: {}", response.substring(0, Math.min(500, response.length())));
-                })
-                .doOnError(error -> {
-                    logger.error("Error fetching exercises: {}", error.getMessage());
-                });
+                .doOnSuccess(response -> logger.info("Raw response from wger exerciseinfo: {}", response.substring(0, Math.min(500, response.length()))))
+                .doOnError(error -> logger.error("Error fetching exercises: {}", error.getMessage()));
     }
 
     private Exercise parseJsonToExercise(org.json.JSONObject obj) {
@@ -199,24 +191,6 @@ public class WorkoutService {
         return Arrays.asList(Muscles.values());
     }
 
-    //    public Mono<Exercise> wgerTest(Long exerciseId) {
-//        return webClient.get()
-//                .uri("https://wger.de/api/v2/exercise/" + exerciseId) // language=2 for English
-//                .retrieve()
-//                .bodyToMono(String.class)
-//                .map(response -> {
-//                    try {
-//                        org.json.JSONObject json = new org.json.JSONObject(response);
-//                        Long id = json.getLong("id");
-//                        String name = json.getString("name");
-//                        String description = json.getString("description");
-//                        return new Exercise(id, name, description, 0, 0);
-//                    } catch (Exception e) {
-//                        e.printStackTrace();
-//                        return new Exercise(exerciseId, "Unknown", "Error fetching exercise", 0, 0);
-//                    }
-//                });
-//    }
     public Mono<String> wgerTest(Long exerciseId) {
         logger.info("Making request to: https://wger.de/api/v2/exercise/{}/", exerciseId);
         return webClient.get()
@@ -225,44 +199,5 @@ public class WorkoutService {
                 .bodyToMono(String.class)
                 .doOnSuccess(response -> logger.info("Success: {}", response.substring(0, Math.min(100, response.length()))))
                 .doOnError(error -> logger.error("Error occurred: {}", error.getMessage()));
-    }
-
-    public Mono<String> simpleConnectionTest() {
-        logger.info("Testing simple HTTP connection...");
-        return webClient.get()
-                .uri("https://httpbin.org/get")
-                .retrieve()
-                .bodyToMono(String.class)
-                .doOnSuccess(_ -> logger.info("Simple connection SUCCESS"))
-                .doOnError(error -> logger.error("Simple connection FAILED: {}", error.getMessage()));
-    }
-
-    public Mono<String> testWgerApi() {
-        logger.info("Testing wger base API...");
-        return webClient.get()
-                .uri("https://wger.de/api/v2/")
-                .retrieve()
-                .bodyToMono(String.class)
-                .doOnSuccess(_ -> logger.info("Wger base API SUCCESS"))
-                .doOnError(error -> logger.error("Wger base API FAILED: {}", error.getMessage()));
-    }
-
-    public Mono<String> testWgerExerciseStructure() {
-        logger.info("Testing different wger endpoints...");
-        return webClient.get()
-                .uri("https://wger.de/api/v2/exerciseinfo/?language=2&limit=5")
-                .retrieve()
-                .bodyToMono(String.class)
-                .doOnSuccess(response -> logger.info("ExerciseInfo response: {}", response.substring(0, Math.min(300, response.length()))))
-                .doOnError(error -> {
-                    logger.error("ExerciseInfo failed, trying exercise translation...");
-                    webClient.get()
-                            .uri("https://wger.de/api/v2/exercisetranslation/?language=2&limit=5")
-                            .retrieve()
-                            .bodyToMono(String.class)
-                            .doOnSuccess(resp -> logger.info("ExerciseTranslation response: {}", resp.substring(0, Math.min(300, resp.length()))))
-                            .doOnError(err -> logger.error("ExerciseTranslation also failed: {}", err.getMessage()))
-                            .subscribe();
-                });
     }
 } 

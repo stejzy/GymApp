@@ -18,7 +18,6 @@ public class ExampleService {
                 .uri("http://user-service/show")
                 .headers(headers -> headers.setBearerAuth(jwtToken))
                 .retrieve()
-                .bodyToMono(String.class)
-                .doOnError(e -> System.out.println("Błąd"));
+                .bodyToMono(String.class);
     }
 }
