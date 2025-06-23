@@ -15,6 +15,7 @@ import java.util.List;
 import org.zzpj.gymapp.workoutgenerationservice.service.GenerationService;
 import reactor.core.scheduler.Schedulers;
 
+import java.util.Objects;
 import java.util.stream.Collectors;
 
 import static org.apache.http.HttpHeaders.AUTHORIZATION;
@@ -65,7 +66,6 @@ public class WorkoutController {
 
     @GetMapping("/generateTest")
     public ResponseEntity<String> generateTest() {
-//        String result = generationService.generateText("test");
         return ResponseEntity.ok("ok");
     }
 
@@ -84,7 +84,7 @@ public class WorkoutController {
         
         List<Muscles> muscles = muscleGroups.stream()
                 .map(Muscles::fromString)
-                .filter(muscle -> muscle != null)
+                .filter(Objects::nonNull)
                 .collect(Collectors.toList());
         
         if (muscles.isEmpty()) {
@@ -146,55 +146,8 @@ public class WorkoutController {
                         .body("Wger Structure Test FAILED"));
     }
 
-//    @PostMapping("/generate")
-//    public Mono<ResponseEntity<String>> generateWorkout(
-//            @RequestParam(required = false, defaultValue = "intermediate") String level,
-//            @RequestParam(required = false, defaultValue = "upper_body") String targetArea,
-//            @RequestParam(required = false, defaultValue = "60") int durationMinutes,
-//            @RequestParam(required = false) List<String> muscleGroups) {
-//
-//        System.out.println("Generating workout for level: " + level + ", target: " + targetArea +
-//                ", duration: " + durationMinutes + " minutes, muscle groups: " + muscleGroups);
-//
-//        final List<Muscles> muscles;
-//        if (muscleGroups != null && !muscleGroups.isEmpty()) {
-//            muscles = muscleGroups.stream()
-//                    .map(Muscles::fromString)
-//                    .filter(muscle -> muscle != null)
-//                    .collect(Collectors.toList());
-//        } else {
-//            muscles = null;
-//        }
-//
-//        return workoutService.fetchExercisesFromWger(muscles)
-//                .map(exercises -> {
-//                    if (exercises.isEmpty()) {
-//                        return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
-//                                .body("Unable to fetch exercises from external API");
-//                    }
-//
-//                    // Przygotowanie promptu dla LLM z listą dostępnych ćwiczeń
-//                    String exercisesList = formatExercisesForLLM(exercises);
-//                    String prompt = buildWorkoutPrompt(level, targetArea, durationMinutes, exercisesList, muscles);
-//
-//                    // Generowanie treningu przez LLM
-//                    String generatedWorkout = generationService.generateText(prompt);
-//
-//                    if (!StringUtils.hasText(generatedWorkout)) {
-//                        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-//                                .body("Failed to generate workout");
-//                    }
-//
-//                    return ResponseEntity.ok(generatedWorkout);
-//                })
-//                .onErrorReturn(ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-//                        .body("Error occurred while generating workout"));
-//    }
-
-
     @PostMapping("/generate")
     public Mono<ResponseEntity<Workout>> generateWorkout(
-//            @RequestParam(defaultValue = "intermediate") String level,
             @RequestParam(defaultValue = "strength") String targetArea,
             @RequestParam(defaultValue = "60") int durationMinutes,
             @RequestParam(required = false) List<String> muscleGroups,
@@ -213,66 +166,14 @@ public class WorkoutController {
                 if (candidates.isEmpty()) {
                     return Mono.just(ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).build());
                 }
-//                ExperienceLevel lvlEnum = ExperienceLevel.valueOf(level.toUpperCase());
                 Goal goalEnum = Goal.fromString(targetArea);
 
                 return Mono.fromCallable(() ->
-                        generationService.generateWorkout(candidates, authHeader, userId, /*lvlEnum,*/ goalEnum, durationMinutes)
+                        generationService.generateWorkout(candidates, authHeader, userId, goalEnum, durationMinutes)
                     )
                     .subscribeOn(Schedulers.boundedElastic())
                     .map(workout -> ResponseEntity.ok(workout))
                     .onErrorReturn(ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build());
             });
     }
-
-
-    private String formatExercisesForLLM(List<Exercise> exercises) {
-        StringBuilder sb = new StringBuilder();
-        sb.append("Available exercises:\n");
-        
-        for (Exercise exercise : exercises) {
-            sb.append("- ").append(exercise.getName())
-              .append(" (ID: ").append(exercise.getId()).append(")")
-              .append(" - ").append(exercise.getDescription());
-            
-            if (exercise.getMuscles() != null && !exercise.getMuscles().isEmpty()) {
-                sb.append(" [Muscles: ").append(exercise.getMuscles().stream()
-                        .map(Muscles::getFriendlyName)
-                        .collect(Collectors.joining(", ")))
-                  .append("]");
-            }
-            
-            sb.append("\n");
-        }
-        
-        return sb.toString();
-    }
-
-    private String buildWorkoutPrompt(String level, String targetArea, int durationMinutes, String exercisesList, List<Muscles> muscleGroups) {
-        StringBuilder prompt = new StringBuilder();
-        prompt.append("Create a detailed workout plan with the following requirements:\n");
-        prompt.append("- Fitness level: ").append(level).append("\n");
-        prompt.append("- Target area: ").append(targetArea).append("\n");
-        prompt.append("- Duration: ").append(durationMinutes).append(" minutes\n");
-        
-        if (muscleGroups != null && !muscleGroups.isEmpty()) {
-            prompt.append("- Focus on these muscle groups: ")
-                  .append(muscleGroups.stream()
-                          .map(Muscles::getFriendlyName)
-                          .collect(Collectors.joining(", ")))
-                  .append("\n");
-        }
-        
-        prompt.append("- Use only exercises from the list below\n\n");
-        prompt.append(exercisesList).append("\n");
-        prompt.append("Please provide:\n");
-        prompt.append("1. A structured workout plan with exercise selection\n");
-        prompt.append("2. Number of sets and repetitions for each exercise\n");
-        prompt.append("3. Rest periods between exercises\n");
-        prompt.append("4. Warm-up and cool-down suggestions\n");
-        prompt.append("5. Total estimated time for the workout\n\n");
-        prompt.append("Format the response as a clear, easy-to-follow workout routine.");
-        
-        return prompt.toString();
-    }
-} 
+}
