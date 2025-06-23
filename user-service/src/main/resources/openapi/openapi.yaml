@@ -1,69 +1,654 @@
-openapi: 3.1.1
+openapi: 3.0.3
 info:
-  title: User API
-  description: API for managing user data
+  title: User Profile Service API
+  description: API for managing user profiles in the Gym Application.
   version: 1.0.0
 
 tags:
-  - name: User
-    description: Operations related to user management
+  - name: User Profiles
+    description: Operations for managing user profiles
 
 paths:
-  /info:
-    get:
-      summary: Get currently logged-in user info
-      description: Retrieve information about a specific user (username, email, created date).
+  /profile:
+    post:
       tags:
-        - User
-      responses:
-        '200':
-          description: Successful response
-        '400':
-          description: Bad request
-        '500':
-          description: Internal server error
-
-  /users:
-    get:
-      summary: Get list of users
-      description: Returns a list of users. Can be filtered by role.
-      tags:
-        - User
-      parameters:
-        - name: role
-          in: query
-          description: Filter users by role (e.g. member, coach)
-          required: false
-          schema:
-            type: string
-      responses:
-        '200':
-          description: List of users returned
-        '400':
-          description: Bad request
-        '500':
-          description: Internal server error
-
-  /personalize:
-    put:
-      summary: Personalize user settings
-      description: Update user preferences or personalization settings.
-      tags:
-        - User
+        - User Profiles
+      summary: Create a new user profile
+      description: Creates a new user profile for the specified user ID
+      operationId: createProfile
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              type: object
-              properties:
-                preferences:
-                  type: object
-                  description: Key-value pairs of user preferences
+              $ref: "#/components/schemas/CreateProfileRequest"
+            example:
+              userId: 123
+              firstName: "John"
+              lastName: "Doe"
+              gender: "Male"
+              height: 180.5
+              weight: 75.0
+              birthday: "1990-05-15"
+              phone: "+48123456789"
+              level: "INTERMEDIATE"
+              bio: "Fitness enthusiast looking to improve strength and endurance"
+              avatarUrl: "https://example.com/avatars/john-doe.jpg"
       responses:
-        '200':
-          description: Preferences updated successfully
-        '400':
-          description: Invalid input data
-        '500':
+        "200":
+          description: Profile created successfully
+          content:
+            application/json:
+              schema:
+                type: object
+        "400":
+          description: Bad request - validation error
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+              example:
+                title: "Validation failed"
+                status: 400
+                detail: "firstName: First name must not exceed 50 characters.; height: Height must be greater than 0."
+                instance: "/profile"
+        "409":
+          description: Conflict - profile already exists
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+              example:
+                title: "User profile already exists"
+                status: 409
+                detail: "Profile already exists for user ID: 123"
+                instance: "/profile"
+        "500":
           description: Internal server error
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+
+  /profile/{userId}:
+    get:
+      tags:
+        - User Profiles
+      summary: Get user profile by user ID
+      description: Retrieves a complete user profile including roles from the auth service
+      operationId: getProfile
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          description: The user ID to retrieve profile for
+          schema:
+            type: integer
+            format: int64
+            minimum: 1
+          example: 123
+        - name: Authorization
+          in: header
+          required: true
+          description: Bearer token for authentication
+          schema:
+            type: string
+            pattern: "^Bearer .*"
+          example: "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+      responses:
+        "200":
+          description: Profile retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserProfileResponse"
+              example:
+                id: 1
+                userId: 123
+                firstName: "John"
+                lastName: "Doe"
+                gender: "Male"
+                height: 180.5
+                weight: 75.0
+                birthday: "1990-05-15"
+                phone: "+48123456789"
+                level: "INTERMEDIATE"
+                bio: "Fitness enthusiast looking to improve strength and endurance"
+                avatarUrl: "https://example.com/avatars/john-doe.jpg"
+                roles: ["MEMBER", "TRAINER"]
+        "401":
+          description: Unauthorized - invalid or missing token
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "404":
+          description: Profile not found
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+              example:
+                title: "User profile not found"
+                status: 404
+                detail: "Profile not found for user ID: 123"
+                instance: "/profile/123"
+        "500":
+          description: Internal server error
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+
+  /profile/me:
+    get:
+      tags:
+        - User Profiles
+      summary: Get current user profile
+      description: Retrieves the profile for the currently authenticated user
+      operationId: getCurrentUserProfile
+      parameters:
+        - name: X-User-Id
+          in: header
+          required: true
+          description: Current user ID from the gateway
+          schema:
+            type: integer
+            format: int64
+            minimum: 1
+          example: 123
+        - name: Authorization
+          in: header
+          required: true
+          description: Bearer token for authentication
+          schema:
+            type: string
+            pattern: "^Bearer .*"
+          example: "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+      responses:
+        "200":
+          description: Current user profile retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserProfileResponse"
+        "401":
+          description: Unauthorized - invalid or missing token
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "404":
+          description: Profile not found
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "500":
+          description: Internal server error
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+
+    patch:
+      tags:
+        - User Profiles
+      summary: Update current user profile
+      description: Updates the profile for the currently authenticated user
+      operationId: updateCurrentUserProfile
+      parameters:
+        - name: X-User-Id
+          in: header
+          required: true
+          description: Current user ID from the gateway
+          schema:
+            type: integer
+            format: int64
+            minimum: 1
+          example: 123
+        - name: Authorization
+          in: header
+          required: true
+          description: Bearer token for authentication
+          schema:
+            type: string
+            pattern: "^Bearer .*"
+          example: "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateProfileRequest"
+            example:
+              firstName: "John"
+              lastName: "Smith"
+              height: 182.0
+              weight: 78.0
+              bio: "Updated bio information"
+      responses:
+        "200":
+          description: Profile updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserProfileResponse"
+        "400":
+          description: Bad request - validation error
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "401":
+          description: Unauthorized - invalid or missing token
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "404":
+          description: Profile not found
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "500":
+          description: Internal server error
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+
+  /profile/{userId}/short:
+    get:
+      tags:
+        - User Profiles
+      summary: Get short user profile
+      description: Retrieves a minimal user profile containing only first and last name
+      operationId: getProfileShort
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          description: The user ID to retrieve short profile for
+          schema:
+            type: integer
+            format: int64
+            minimum: 1
+          example: 123
+      responses:
+        "200":
+          description: Short profile retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserProfileShortResponse"
+              example:
+                firstName: "John"
+                lastName: "Doe"
+        "404":
+          description: Profile not found
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "500":
+          description: Internal server error
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+
+  /profile/role/{role}:
+    get:
+      tags:
+        - User Profiles
+      summary: Get profiles by role
+      description: Retrieves user profiles filtered by role with pagination support
+      operationId: getProfilesByRole
+      parameters:
+        - name: role
+          in: path
+          required: true
+          description: The role to filter users by
+          schema:
+            type: string
+            enum: [MEMBER, TRAINER, ADMIN]
+          example: "TRAINER"
+        - name: page
+          in: query
+          required: false
+          description: Page number (0-based)
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+          example: 0
+        - name: size
+          in: query
+          required: false
+          description: Page size
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+          example: 20
+        - name: Authorization
+          in: header
+          required: true
+          description: Bearer token for authentication
+          schema:
+            type: string
+            pattern: "^Bearer .*"
+          example: "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+      responses:
+        "200":
+          description: Profiles retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/UserProfileResponse"
+              example:
+                - id: 1
+                  userId: 123
+                  firstName: "John"
+                  lastName: "Doe"
+                  gender: "Male"
+                  height: 180.5
+                  weight: 75.0
+                  birthday: "1990-05-15"
+                  phone: "+48123456789"
+                  level: "INTERMEDIATE"
+                  bio: "Fitness enthusiast"
+                  avatarUrl: "https://example.com/avatars/john-doe.jpg"
+                  roles: ["TRAINER"]
+                - id: 2
+                  userId: 456
+                  firstName: "Jane"
+                  lastName: "Smith"
+                  gender: "Female"
+                  height: 165.0
+                  weight: 60.0
+                  birthday: "1985-08-20"
+                  phone: "+48987654321"
+                  level: "ADVANCED"
+                  bio: "Professional trainer"
+                  avatarUrl: "https://example.com/avatars/jane-smith.jpg"
+                  roles: ["TRAINER"]
+        "401":
+          description: Unauthorized - invalid or missing token
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "500":
+          description: Internal server error
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+
+components:
+  schemas:
+    CreateProfileRequest:
+      type: object
+      required:
+        - userId
+      properties:
+        userId:
+          type: integer
+          format: int64
+          minimum: 1
+          description: The user ID for which to create the profile
+          example: 123
+        firstName:
+          type: string
+          minLength: 2
+          maxLength: 50
+          description: User's first name
+          example: "John"
+        lastName:
+          type: string
+          minLength: 2
+          maxLength: 50
+          description: User's last name
+          example: "Doe"
+        gender:
+          type: string
+          minLength: 1
+          maxLength: 10
+          description: User's gender
+          example: "Male"
+        height:
+          type: number
+          format: double
+          minimum: 0.0
+          exclusiveMinimum: true
+          maximum: 300.0
+          description: User's height in centimeters
+          example: 180.5
+        weight:
+          type: number
+          format: double
+          minimum: 0.0
+          exclusiveMinimum: true
+          maximum: 500.0
+          description: User's weight in kilograms
+          example: 75.0
+        birthday:
+          type: string
+          format: date
+          description: User's birthday (must be in the past)
+          example: "1990-05-15"
+        phone:
+          type: string
+          pattern: '^\+?\d{9,15}$'
+          description: User's phone number (9-15 digits, optionally with a plus at the beginning)
+          example: "+48123456789"
+        level:
+          $ref: "#/components/schemas/TrainingLevel"
+        bio:
+          type: string
+          maxLength: 500
+          description: User's bio or description
+          example: "Fitness enthusiast looking to improve strength and endurance"
+        avatarUrl:
+          type: string
+          maxLength: 255
+          pattern: "^(https?://).*$"
+          description: URL to user's avatar image
+          example: "https://example.com/avatars/john-doe.jpg"
+
+    UpdateProfileRequest:
+      type: object
+      description: Request for updating user profile (all fields are optional)
+      properties:
+        firstName:
+          type: string
+          minLength: 2
+          maxLength: 50
+          description: User's first name
+          example: "John"
+        lastName:
+          type: string
+          minLength: 2
+          maxLength: 50
+          description: User's last name
+          example: "Doe"
+        gender:
+          type: string
+          minLength: 1
+          maxLength: 10
+          description: User's gender
+          example: "Male"
+        height:
+          type: number
+          format: double
+          minimum: 0.0
+          exclusiveMinimum: true
+          maximum: 300.0
+          description: User's height in centimeters
+          example: 180.5
+        weight:
+          type: number
+          format: double
+          minimum: 0.0
+          exclusiveMinimum: true
+          maximum: 500.0
+          description: User's weight in kilograms
+          example: 75.0
+        birthday:
+          type: string
+          format: date
+          description: User's birthday (must be in the past)
+          example: "1990-05-15"
+        phone:
+          type: string
+          pattern: '^\+?\d{9,15}$'
+          description: User's phone number (9-15 digits, optionally with a plus at the beginning)
+          example: "+48123456789"
+        level:
+          $ref: "#/components/schemas/TrainingLevel"
+        bio:
+          type: string
+          maxLength: 500
+          description: User's bio or description
+          example: "Fitness enthusiast looking to improve strength and endurance"
+        avatarUrl:
+          type: string
+          maxLength: 255
+          pattern: "^(https?://).*$"
+          description: URL to user's avatar image
+          example: "https://example.com/avatars/john-doe.jpg"
+
+    UserProfileResponse:
+      type: object
+      description: Complete user profile response including roles
+      properties:
+        id:
+          type: integer
+          format: int64
+          description: Profile ID
+          example: 1
+        userId:
+          type: integer
+          format: int64
+          description: User ID
+          example: 123
+        firstName:
+          type: string
+          nullable: true
+          description: User's first name
+          example: "John"
+        lastName:
+          type: string
+          nullable: true
+          description: User's last name
+          example: "Doe"
+        gender:
+          type: string
+          nullable: true
+          description: User's gender
+          example: "Male"
+        height:
+          type: number
+          format: double
+          nullable: true
+          description: User's height in centimeters
+          example: 180.5
+        weight:
+          type: number
+          format: double
+          nullable: true
+          description: User's weight in kilograms
+          example: 75.0
+        birthday:
+          type: string
+          format: date
+          nullable: true
+          description: User's birthday
+          example: "1990-05-15"
+        phone:
+          type: string
+          nullable: true
+          description: User's phone number
+          example: "+48123456789"
+        level:
+          $ref: "#/components/schemas/TrainingLevel"
+        bio:
+          type: string
+          nullable: true
+          description: User's bio or description
+          example: "Fitness enthusiast looking to improve strength and endurance"
+        avatarUrl:
+          type: string
+          nullable: true
+          description: URL to user's avatar image
+          example: "https://example.com/avatars/john-doe.jpg"
+        roles:
+          type: array
+          items:
+            type: string
+          description: User's roles from the auth service
+          example: ["MEMBER", "TRAINER"]
+
+    UserProfileShortResponse:
+      type: object
+      description: Minimal user profile response containing only name information
+      properties:
+        firstName:
+          type: string
+          nullable: true
+          description: User's first name
+          example: "John"
+        lastName:
+          type: string
+          nullable: true
+          description: User's last name
+          example: "Doe"
+
+    TrainingLevel:
+      type: string
+      enum: [BEGINNER, INTERMEDIATE, ADVANCED]
+      description: User's training experience level
+      example: "INTERMEDIATE"
+
+    ProblemDetail:
+      type: object
+      description: RFC 7807 Problem Details for HTTP APIs
+      properties:
+        type:
+          type: string
+          format: uri
+          description: A URI reference that identifies the problem type
+          example: "https://example.com/problems/validation-failed"
+        title:
+          type: string
+          description: A short, human-readable summary of the problem type
+          example: "Validation failed"
+        status:
+          type: integer
+          description: The HTTP status code generated by the origin server for this occurrence of the problem
+          example: 400
+        detail:
+          type: string
+          description: A human-readable explanation specific to this occurrence of the problem
+          example: "firstName: First name must not exceed 50 characters."
+        instance:
+          type: string
+          format: uri
+          description: A URI reference that identifies the specific occurrence of the problem
+          example: "/profile"
+
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: JWT token for authentication
+
+security:
+  - BearerAuth: []

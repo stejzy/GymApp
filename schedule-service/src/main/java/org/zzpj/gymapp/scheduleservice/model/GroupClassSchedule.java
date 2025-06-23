@@ -1,5 +1,6 @@
 package org.zzpj.gymapp.scheduleservice.model;
 
+import com.fasterxml.jackson.annotation.JsonFormat;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
@@ -29,10 +30,8 @@ public class GroupClassSchedule {
     @Column(name = "trainer_id", nullable = false)
     private Long trainerId;
 
-    @Column(nullable = false)
     private LocalDateTime startTime;
 
-    @Column(nullable = false)
     private LocalDateTime endTime;
 
     @ElementCollection

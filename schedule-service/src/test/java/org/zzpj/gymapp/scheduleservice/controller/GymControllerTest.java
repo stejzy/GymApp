@@ -6,6 +6,7 @@ import org.mockito.Mockito;
 import org.zzpj.gymapp.scheduleservice.dto.GroupClassDefinitionDTO;
 import org.zzpj.gymapp.scheduleservice.dto.GymDTO;
 import org.zzpj.gymapp.scheduleservice.dto.GymGroupClassOfferingDTO;
+import org.zzpj.gymapp.scheduleservice.service.GroupClassScheduleService;
 import org.zzpj.gymapp.scheduleservice.service.GymService;
 import org.springframework.http.ResponseEntity;
 
@@ -19,12 +20,13 @@ import java.time.LocalTime;
 class GymControllerTest {
 
     private GymService gymService;
+    private GroupClassScheduleService groupClassScheduleService;
     private GymController gymController;
 
     @BeforeEach
     void setUp() {
         gymService = mock(GymService.class);
-        gymController = new GymController(gymService);
+        gymController = new GymController(gymService, groupClassScheduleService);
     }
 
     @Test

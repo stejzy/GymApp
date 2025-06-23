@@ -26,7 +26,13 @@ public class GatewaySecurityConfig {
                                       "/api/auth/login",
                                       "/api/auth/oauth2/**",
                                       "/api/auth/default-ui.css",
-                                      "/api/auth/").permitAll()
+                                      "/api/auth/",
+                                      "/error",
+                                      "/swagger-ui.html",
+                                      "/swagger-ui/**",
+                                      "/v3/api-docs",
+                                      "/v3/api-docs/**",
+                                      "/openapi/openapi.yaml").permitAll()
                         .anyExchange().authenticated()
                 )
                 .oauth2ResourceServer(oauth2 -> oauth2
