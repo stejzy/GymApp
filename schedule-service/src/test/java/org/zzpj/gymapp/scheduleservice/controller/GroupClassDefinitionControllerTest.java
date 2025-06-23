@@ -2,7 +2,6 @@ package org.zzpj.gymapp.scheduleservice.controller;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.mockito.Mockito;
 import org.zzpj.gymapp.scheduleservice.dto.GroupClassDefinitionDTO;
 import org.zzpj.gymapp.scheduleservice.service.GroupClassDefinitionService;
 import org.springframework.http.ResponseEntity;
