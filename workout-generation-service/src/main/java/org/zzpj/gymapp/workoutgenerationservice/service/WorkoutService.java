@@ -1,5 +1,7 @@
 package org.zzpj.gymapp.workoutgenerationservice.service;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.zzpj.gymapp.workoutgenerationservice.model.Workout;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -18,6 +20,8 @@ public class WorkoutService {
     private final Map<Long, Workout> workoutMap = new HashMap<>();
     private final AtomicLong idGenerator = new AtomicLong();
     private final WebClient webClient;
+
+    Logger logger = LoggerFactory.getLogger(WorkoutService.class);
 
     @Autowired
     public WorkoutService(@Qualifier("externalWebClient") WebClient webClient) {
@@ -48,9 +52,9 @@ public class WorkoutService {
     }
 
     public Mono<List<Exercise>> fetchExercisesFromWger(List<Muscles> muscleGroups) {
-        System.out.println("Fetching exercises from wger API...");
+        logger.info("Fetching exercises from wger API...");
         if (muscleGroups != null && !muscleGroups.isEmpty()) {
-            System.out.println("Filtering by muscle groups: " + muscleGroups.stream()
+            logger.info("Filtering by muscle groups: {}", muscleGroups.stream()
                     .map(Muscles::getFriendlyName)
                     .collect(Collectors.joining(", ")));
         }
@@ -59,19 +63,19 @@ public class WorkoutService {
                 .map(response -> {
                     List<Exercise> exercises = new ArrayList<>();
                     try {
-                        System.out.println("Parsing JSON response...");
+                        logger.info("Parsing JSON response...");
                         org.json.JSONObject json = new org.json.JSONObject(response);
-                        System.out.println("JSON keys: " + json.keySet());
+                        logger.info("JSON keys: {}", json.keySet());
 
                         if (json.has("results")) {
                             org.json.JSONArray results = json.getJSONArray("results");
-                            System.out.println("Found " + results.length() + " results");
+                            logger.info("Found {} results", results.length());
 
                             // Log first object to see available fields
                             if (!results.isEmpty()) {
                                 org.json.JSONObject firstObj = results.getJSONObject(0);
-                                System.out.println("First object keys: " + firstObj.keySet());
-                                System.out.println("First object full: " + firstObj.toString());
+                                logger.info("First object keys: {}", firstObj.keySet());
+                                logger.info("First object full: {}", firstObj);
                             }
 
                             for (int i = 0; i < results.length(); i++) {
@@ -79,17 +83,17 @@ public class WorkoutService {
                                 Exercise exercise = parseJsonToExercise(obj);
                                 if (exercise != null) {
                                     exercises.add(exercise);
-                                    System.out.println("Added exercise: " + exercise.getName());
+                                    logger.info("Added exercise: {}", exercise.getName());
                                 }
                             }
                         } else {
-                            System.out.println("No 'results' field found in response");
+                            logger.info("No 'results' field found in response");
                         }
                     } catch (Exception e) {
-                        System.err.println("Error parsing JSON: " + e.getMessage());
+                        logger.error("Error parsing JSON: {}", e.getMessage());
                         e.printStackTrace();
                     }
-                    System.out.println("Returning " + exercises.size() + " exercises");
+                    logger.info("Returning {} exercises", exercises.size());
                     return exercises;
                 });
     }
@@ -108,28 +112,27 @@ public class WorkoutService {
         }
 
         String uri = uriBuilder.toString();
-        System.out.println("Making request to: " + uri);
+        logger.info("Making request to: {}", uri);
 
         return webClient.get()
                 .uri(uri)
                 .retrieve()
                 .bodyToMono(String.class)
                 .doOnSuccess(response -> {
-                    System.out.println("Raw response from wger exerciseinfo: " + response.substring(0, Math.min(500, response.length())));
+                    logger.info("Raw response from wger exerciseinfo: {}", response.substring(0, Math.min(500, response.length())));
                 })
                 .doOnError(error -> {
-                    System.err.println("Error fetching exercises: " + error.getMessage());
+                    logger.error("Error fetching exercises: {}", error.getMessage());
                 });
     }
 
     private Exercise parseJsonToExercise(org.json.JSONObject obj) {
         try {
             Long id = obj.getLong("id");
-            String name = "Exercise " + id; // default fallback
-            String description = "No description available"; // default fallback
+            String name = "Exercise " + id;
+            String description = "No description available";
             List<Muscles> muscles = new ArrayList<>();
 
-            // Parse muscles
             if (obj.has("muscles")) {
                 org.json.JSONArray musclesArray = obj.getJSONArray("muscles");
                 for (int i = 0; i < musclesArray.length(); i++) {
@@ -154,36 +157,31 @@ public class WorkoutService {
                 }
             }
 
-            // Look for translations array
             if (obj.has("translations")) {
                 org.json.JSONArray translations = obj.getJSONArray("translations");
 
-                // Find English translation (language: 2)
                 for (int i = 0; i < translations.length(); i++) {
                     org.json.JSONObject translation = translations.getJSONObject(i);
 
-                    // Check if this is English translation
                     if (translation.has("language") && translation.getInt("language") == 2) {
                         name = translation.optString("name", name);
                         description = translation.optString("description", description);
-                        break; // Found English translation, stop looking
+                        break;
                     }
                 }
 
-                // If no English translation found, use first available translation
                 if (name.equals("Exercise " + id) && translations.length() > 0) {
                     org.json.JSONObject firstTranslation = translations.getJSONObject(0);
                     name = firstTranslation.optString("name", name);
                     description = firstTranslation.optString("description", description);
-                    System.out.println("Used non-English translation for exercise " + id);
+                    logger.info("Used non-English translation for exercise {}", id);
                 }
             }
 
-            System.out.println("Parsed exercise - ID: " + id + ", Name: " + name + ", Muscles: " +
-                    muscles.stream().map(Muscles::getFriendlyName).collect(Collectors.joining(", ")));
+            logger.info("Parsed exercise - ID: {}, Name: {}, Muscles: {}", id, name, muscles.stream().map(Muscles::getFriendlyName).collect(Collectors.joining(", ")));
             return new Exercise(id, name, description, 0, 0, muscles);
         } catch (Exception e) {
-            System.err.println("Error processing exercise: " + e.getMessage());
+            logger.error("Error processing exercise: {}", e.getMessage());
             return null;
         }
     }
@@ -220,51 +218,50 @@ public class WorkoutService {
 //                });
 //    }
     public Mono<String> wgerTest(Long exerciseId) {
-        System.out.println("Making request to: https://wger.de/api/v2/exercise/" + exerciseId + "/");
+        logger.info("Making request to: https://wger.de/api/v2/exercise/{}/", exerciseId);
         return webClient.get()
                 .uri("https://wger.de/api/v2/exercise/" + exerciseId + "/")
                 .retrieve()
                 .bodyToMono(String.class)
-                .doOnSuccess(response -> System.out.println("Success: " + response.substring(0, Math.min(100, response.length()))))
-                .doOnError(error -> System.err.println("Error occurred: " + error.getMessage()));
+                .doOnSuccess(response -> logger.info("Success: {}", response.substring(0, Math.min(100, response.length()))))
+                .doOnError(error -> logger.error("Error occurred: {}", error.getMessage()));
     }
 
     public Mono<String> simpleConnectionTest() {
-        System.out.println("Testing simple HTTP connection...");
+        logger.info("Testing simple HTTP connection...");
         return webClient.get()
                 .uri("https://httpbin.org/get")
                 .retrieve()
                 .bodyToMono(String.class)
-                .doOnSuccess(response -> System.out.println("Simple connection SUCCESS"))
-                .doOnError(error -> System.err.println("Simple connection FAILED: " + error.getMessage()));
+                .doOnSuccess(_ -> logger.info("Simple connection SUCCESS"))
+                .doOnError(error -> logger.error("Simple connection FAILED: {}", error.getMessage()));
     }
 
     public Mono<String> testWgerApi() {
-        System.out.println("Testing wger base API...");
+        logger.info("Testing wger base API...");
         return webClient.get()
                 .uri("https://wger.de/api/v2/")
                 .retrieve()
                 .bodyToMono(String.class)
-                .doOnSuccess(response -> System.out.println("Wger base API SUCCESS"))
-                .doOnError(error -> System.err.println("Wger base API FAILED: " + error.getMessage()));
+                .doOnSuccess(_ -> logger.info("Wger base API SUCCESS"))
+                .doOnError(error -> logger.error("Wger base API FAILED: {}", error.getMessage()));
     }
 
     public Mono<String> testWgerExerciseStructure() {
-        System.out.println("Testing different wger endpoints...");
+        logger.info("Testing different wger endpoints...");
         return webClient.get()
                 .uri("https://wger.de/api/v2/exerciseinfo/?language=2&limit=5")
                 .retrieve()
                 .bodyToMono(String.class)
-                .doOnSuccess(response -> System.out.println("ExerciseInfo response: " + response.substring(0, Math.min(300, response.length()))))
+                .doOnSuccess(response -> logger.info("ExerciseInfo response: {}", response.substring(0, Math.min(300, response.length()))))
                 .doOnError(error -> {
-                    System.err.println("ExerciseInfo failed, trying exercise translation...");
-                    // Try exercise translation endpoint
+                    logger.error("ExerciseInfo failed, trying exercise translation...");
                     webClient.get()
                             .uri("https://wger.de/api/v2/exercisetranslation/?language=2&limit=5")
                             .retrieve()
                             .bodyToMono(String.class)
-                            .doOnSuccess(resp -> System.out.println("ExerciseTranslation response: " + resp.substring(0, Math.min(300, resp.length()))))
-                            .doOnError(err -> System.err.println("ExerciseTranslation also failed: " + err.getMessage()))
+                            .doOnSuccess(resp -> logger.info("ExerciseTranslation response: {}", resp.substring(0, Math.min(300, resp.length()))))
+                            .doOnError(err -> logger.error("ExerciseTranslation also failed: {}", err.getMessage()))
                             .subscribe();
                 });
     }

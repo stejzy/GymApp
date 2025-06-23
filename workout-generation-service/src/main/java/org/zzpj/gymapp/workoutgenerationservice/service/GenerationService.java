@@ -7,8 +7,13 @@ import com.openai.client.okhttp.OpenAIOkHttpClient;
 import com.openai.models.ChatModel;
 import com.openai.models.chat.completions.ChatCompletion;
 import com.openai.models.chat.completions.ChatCompletionCreateParams;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
+import org.zzpj.gymapp.workoutgenerationservice.client.UserServiceClient;
+import org.zzpj.gymapp.workoutgenerationservice.dto.UserProfileDTO;
 import org.zzpj.gymapp.workoutgenerationservice.model.Exercise;
 import org.zzpj.gymapp.workoutgenerationservice.model.ExperienceLevel;
 import org.zzpj.gymapp.workoutgenerationservice.model.Goal;
@@ -23,17 +28,31 @@ public class GenerationService {
     private final OpenAIClient client;
     private final ObjectMapper mapper = new ObjectMapper();
 
-    public GenerationService(@Value("${openai.api.key}") String apiKey) {
+    private UserServiceClient userServiceClient;
+
+    Logger logger = LoggerFactory.getLogger(GenerationService.class);
+
+    public GenerationService(@Value("${openai.api.key}") String apiKey, UserServiceClient userServiceClient) {
+        this.userServiceClient = userServiceClient;
         this.client = OpenAIOkHttpClient.builder()
             .apiKey(apiKey)
             .build();
     }
 
     public Workout generateWorkout(List<Exercise> candidates,
-                                   ExperienceLevel level,
+                                   String authHeader,
+                                   Long userId,
                                    Goal goal,
                                    int durationMinutes) throws Exception {
-        String prompt = buildGeneratePrompt(candidates, level, goal, durationMinutes);
+
+        UserProfileDTO profile = userServiceClient.getUserProfile(authHeader, userId);
+
+        if (profile.getLevel() == null ) {
+            throw new Exception(String.format("User %s has no level", userId));
+        }
+        ExperienceLevel level = ExperienceLevel.valueOf(profile.getLevel().toUpperCase());
+
+        String prompt = buildGeneratePrompt(candidates, level, goal, durationMinutes, profile);
 
         ChatCompletionCreateParams params = ChatCompletionCreateParams.builder()
             .model(ChatModel.GPT_4_1_NANO_2025_04_14)
@@ -43,9 +62,9 @@ public class GenerationService {
             .build();
 
         ChatCompletion completion = client.chat().completions().create(params);
-        String content = completion.choices().getFirst().message().content().orElse("");
+        String content = completion.choices().getFirst().message().content().orElse("bruh");
 
-        System.out.println("OpenAI response: " + content);
+        logger.info("OpenAI response: {}", content);
 
         try {
             JsonNode root = mapper.readTree(content);
@@ -93,7 +112,8 @@ public class GenerationService {
     private String buildGeneratePrompt(List<Exercise> list,
                                        ExperienceLevel level,
                                        Goal goal,
-                                       int duration) {
+                                       int duration,
+                                       UserProfileDTO profile) {
         StringBuilder sb = new StringBuilder();
         sb.append("Here are the candidate exercises (id: name, muscles):\n");
         for (Exercise ex : list) {
@@ -103,14 +123,19 @@ public class GenerationService {
                                   .map(m -> m.getFriendlyName())
                                   .collect(Collectors.joining(", ")) + ")\n");
         }
-        sb.append("\nCreate a workout plan for a user with experience level: (WITHOUT COMMENTS)")
-          .append(level)
-          .append(", goal: ")
-          .append(goal)
-          .append(", total duration: ")
-          .append(duration)
-          .append(" minutes. ")
-          .append("Respond with a JSON object only, with keys:\n")
+        sb.append("\nCreate a workout plan for a user with the following profile: ");
+        sb.append("experience level: ").append(level)
+          .append(", goal: ").append(goal)
+          .append(", total duration: ").append(duration).append(" minutes");
+        if (profile != null) {
+            if (profile.getBirthday() != null) {
+                sb.append(", age: ").append(java.time.Period.between(profile.getBirthday(), java.time.LocalDate.now()).getYears());
+            }
+            if (profile.getWeight() != null) {
+                sb.append(", weight: ").append(profile.getWeight()).append(" kg");
+            }
+        }
+        sb.append(". Respond with a JSON object only, with keys, without comments:\n")
           .append("- workoutName (string)\n")
           .append("- workoutDescription (string)\n")
           .append("- exercises (array of objects with id (int), sets (int), repetitions (int), weight in kg (int)\n")
