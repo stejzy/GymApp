@@ -99,7 +99,12 @@ public class AuthorizationServerConfig {
                             "/register",
                             "/login",
                             "/actuator/**",
-                            "/error"
+                            "/error",
+                            "/swagger-ui.html",
+                            "/swagger-ui/**",
+                            "/v3/api-docs",
+                            "/v3/api-docs/**",
+                            "/openapi/openapi.yaml"
                         ).permitAll()
                         .anyRequest().authenticated()
                 )
