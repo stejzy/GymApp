@@ -85,8 +85,6 @@ public class GymService {
 
         Mono<UserProfileResponseDTO> userProfileMono = Mono.fromCallable(() -> {
                     UserProfileResponse response = userServiceClient.getProfile(authHeader, userId);
-                    System.out.println("ELO");
-                    System.out.println(response.getUserId());
                     return new UserProfileResponseDTO(
                             response.getId(),
                             response.getUserId(),

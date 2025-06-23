@@ -82,8 +82,6 @@ public class RecurringGroupClassScheduleService {
                 LocalDateTime fullStart = LocalDateTime.of(currentDate, startTime);
                 LocalDateTime fullEnd = LocalDateTime.of(currentDate, endTime);
 
-                System.out.println(fullStart);
-
                 List<GroupClassSchedule> singleConflicts = groupClassScheduleRepository
                         .findConflictingGroupSchedules(gymId, fullStart, fullEnd);
 
@@ -125,8 +123,6 @@ public class RecurringGroupClassScheduleService {
     }
 
     private RecurringGroupClassSchedule mapDtoToEntity(RequestRecurringGroupClassScheduleDTO dto) {
-        System.out.println(dto.capacity());
-        System.out.println(dto.gymGroupClassOfferingId());
         GymGroupClassOffering offering = gymGroupClassOfferingRepository
                 .findById(dto.gymGroupClassOfferingId())
                 .orElseThrow(() -> new EntityNotFoundException("Offering not found"));

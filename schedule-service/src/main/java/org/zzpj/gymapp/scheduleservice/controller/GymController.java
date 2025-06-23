@@ -46,7 +46,6 @@ public class GymController {
             @RequestHeader(HttpHeaders.AUTHORIZATION) String authHeader,
             @PathVariable Long gymId,
             @PathVariable Long userId) {
-        System.out.println("POOSA");
         return gymService.addTrainerToGym(gymId, userId, authHeader)
                 .map(ResponseEntity::ok);
     }

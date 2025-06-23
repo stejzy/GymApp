@@ -29,14 +29,20 @@ public class TrainingSessionService {
     }
 
     public void checkTrainerAvailability(Long trainerId, LocalDateTime start, LocalDateTime end) {
-        List<TrainingSession> conflicts = trainingSessionRepository.findTrainerConflicts(trainerId, start, end);
+        List<TrainingSession> conflicts = trainingSessionRepository.findTrainerConflicts(trainerId, start, end)
+                .stream()
+                .filter(s -> s.getStatus() == SessionStatus.CONFIRMED)
+                .toList();
         if (!conflicts.isEmpty()) {
             throw new ScheduleConflictException("Trainer has another session at this time.");
         }
     }
 
     public void checkUserAvailability(Long userId, LocalDateTime start, LocalDateTime end) {
-        List<TrainingSession> conflicts = trainingSessionRepository.findUserConflicts(userId, start, end);
+        List<TrainingSession> conflicts = trainingSessionRepository.findUserConflicts(userId, start, end)
+                .stream()
+                .filter(s -> s.getStatus() == SessionStatus.CONFIRMED)
+                .toList();
         if (!conflicts.isEmpty()) {
             throw new ScheduleConflictException("User has another session at this time.");
         }
@@ -125,7 +131,18 @@ public class TrainingSessionService {
             throw new IllegalStateException("Only staging sessions can be accepted or rejected.");
         }
 
-        session.setStatus(accept ? SessionStatus.CONFIRMED : SessionStatus.REJECTED);
+        if (accept) {
+           try {
+                checkTrainerAvailability(session.getTrainerId(), session.getStartTime(), session.getEndTime());
+            } catch (ScheduleConflictException e) {
+                throw new ScheduleConflictException("You have another session at this time.");
+            }
+            checkUserAvailability(session.getUserId(), session.getStartTime(), session.getEndTime());
+            session.setStatus(SessionStatus.CONFIRMED);
+        } else {
+            session.setStatus(SessionStatus.REJECTED);
+        }
+
         return trainingSessionRepository.save(session);
     }
 
