@@ -11,6 +11,7 @@ import org.zzpj.gymapp.authservice.client.UserClient;
 import org.zzpj.gymapp.authservice.dto.RegisterRequest;
 import org.zzpj.gymapp.authservice.entity.Role;
 import org.zzpj.gymapp.authservice.entity.User;
+import org.zzpj.gymapp.authservice.exception.ProfileCreationException;
 import org.zzpj.gymapp.authservice.repository.UserRepository;
 import org.zzpj.gymapp.authservice.dto.UserInfoDto;
 import org.zzpj.gymapp.authservice.exception.UserNotFoundException;
@@ -56,10 +57,10 @@ public class AuthService {
             userClient.createProfile(Map.of("userId", user.getId()));
         } catch (FeignException ex) {
             userRepository.delete(user);
-            throw new RuntimeException("User registered, but failed to create profile: " + ex.contentUTF8());
+            throw new ProfileCreationException("User registered, but failed to create profile: " + ex.contentUTF8(), ex);
         } catch (Exception ex) {
             userRepository.delete(user);
-            throw new RuntimeException("User registered, but failed to create profile: " + ex.getMessage());
+            throw new ProfileCreationException("User registered, but failed to create profile: " + ex.getMessage(), ex);
         }
     }
 

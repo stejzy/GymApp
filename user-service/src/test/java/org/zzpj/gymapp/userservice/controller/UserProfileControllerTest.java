@@ -92,12 +92,11 @@ class UserProfileControllerTest {
 
     @Test
     void shouldGetCurrentUserProfileSuccessfully() throws Exception {
-        when(userProfileService.getProfile(anyString(), eq(1L)))
+        when(userProfileService.getCurrentUserProfile(eq(1L)))
                 .thenReturn(userProfileResponse);
 
         mockMvc.perform(get("/profile/me")
-                        .header("X-User-Id", "1")
-                        .header("Authorization", "Bearer token"))
+                        .header("X-User-Id", "1"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.id").value(1))
                 .andExpect(jsonPath("$.firstName").value("John"));

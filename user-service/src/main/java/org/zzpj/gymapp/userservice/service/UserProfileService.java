@@ -23,6 +23,8 @@ public class UserProfileService {
     private final UserProfileRepository userProfileRepository;
     private final AuthServiceClient authServiceClient;
 
+    private static final String PROFILE_NOT_FOUND = "Profile not found for user ID: ";
+
     public UserProfileService(UserProfileRepository userProfileRepository,
                              AuthServiceClient authServiceClient) {
         this.userProfileRepository = userProfileRepository;
@@ -31,7 +33,7 @@ public class UserProfileService {
 
     public void createProfile(@Valid CreateProfileRequest request) {
         if (userProfileRepository.existsByUserId(request.getUserId())) {
-            throw new UserProfileAlreadyExistsException("Profile already exists for user ID: " + request.getUserId());
+            throw new UserProfileAlreadyExistsException(PROFILE_NOT_FOUND + request.getUserId());
         }
 
         UserProfile profile = new UserProfile();
@@ -41,7 +43,7 @@ public class UserProfileService {
 
     public UserProfileResponse getProfile(String authHeader, Long userId) {
         UserProfile profile = userProfileRepository.findByUserId(userId)
-                .orElseThrow(() -> new UserProfileNotFoundException("Profile not found for user ID: " + userId));
+                .orElseThrow(() -> new UserProfileNotFoundException(PROFILE_NOT_FOUND + userId));
 
         Set<String> roles = authServiceClient.getUserRoles(userId, authHeader);
 
@@ -64,7 +66,7 @@ public class UserProfileService {
 
     public UserProfileResponse updateProfile(String authHeader, Long userId, @Valid UpdateProfileRequest updateRequest) {
         UserProfile existing = userProfileRepository.findByUserId(userId)
-                .orElseThrow(() -> new UserProfileNotFoundException("Profile not found for user ID: " + userId));
+                .orElseThrow(() -> new UserProfileNotFoundException(PROFILE_NOT_FOUND + userId));
 
         applyUpdates(existing, updateRequest);
         UserProfile updatedProfile = userProfileRepository.save(existing);
@@ -74,7 +76,7 @@ public class UserProfileService {
 
     public UserProfileShortResponse getProfileShort(Long userId) {
         UserProfile profile = userProfileRepository.findByUserId(userId)
-                .orElseThrow(() -> new UserProfileNotFoundException("Profile not found for user ID: " + userId));
+                .orElseThrow(() -> new UserProfileNotFoundException(PROFILE_NOT_FOUND + userId));
 
         return new UserProfileShortResponse(
                 profile.getFirstName(),
@@ -115,6 +117,29 @@ public class UserProfileService {
                     );
                 })
                 .collect(Collectors.toList());
+    }
+
+    public UserProfileResponse getCurrentUserProfile(Long userId) {
+        UserProfile profile = userProfileRepository.findByUserId(userId)
+                .orElseThrow(() -> new UserProfileNotFoundException(PROFILE_NOT_FOUND + userId));
+
+        Set<String> roles = Set.of();
+
+        return new UserProfileResponse(
+                profile.getId(),
+                profile.getUserId(),
+                profile.getFirstName(),
+                profile.getLastName(),
+                profile.getGender(),
+                profile.getHeight(),
+                profile.getWeight(),
+                profile.getBirthday(),
+                profile.getPhone(),
+                profile.getLevel(),
+                profile.getBio(),
+                profile.getAvatarUrl(),
+                roles
+        );
     }
 
     private void applyUpdates(UserProfile profile, UpdateProfileRequest update) {

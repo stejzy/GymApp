@@ -37,10 +37,9 @@ public class UserProfileController {
 
     @GetMapping("/me")
     public ResponseEntity<UserProfileResponse> getCurrentUserProfile(
-            @RequestHeader("X-User-Id") Long userId,
-            @RequestHeader(name = AUTHORIZATION) String authHeader
+            @RequestHeader("X-User-Id") Long userId
     ) {
-        UserProfileResponse response = userProfileService.getProfile(authHeader, userId);
+        UserProfileResponse response = userProfileService.getCurrentUserProfile(userId);
         return ResponseEntity.ok(response);
     }
 
