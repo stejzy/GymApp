@@ -1,7 +1,9 @@
 package org.zzpj.gymapp.scheduleservice.service;
 
 import jakarta.transaction.Transactional;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.zzpj.gymapp.scheduleservice.exeption.ScheduleConflictException;
 import org.zzpj.gymapp.scheduleservice.model.*;
 import org.zzpj.gymapp.scheduleservice.repository.GroupClassScheduleRepository;
@@ -72,9 +74,10 @@ public class GroupClassScheduleGenerator {
                     session.setEndTime(fullEnd);
                     session.setClassId(newSchedule.getId());
                     session.setType(SessionType.GROUP);
+                    session.setStatus(SessionStatus.CONFIRMED);
 
                     // Jeśli utworzenie sesji rzuci wyjątek, wszystko się wycofa, łącznie z zapisem newSchedule
-                    trainingSessionService.createTrainingSession(session);
+                    trainingSessionService.createGroupTrainingSession(session);
                 }
             }
 

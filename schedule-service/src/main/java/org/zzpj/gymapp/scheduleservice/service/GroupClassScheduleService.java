@@ -6,15 +6,14 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
+import org.zzpj.gymapp.scheduleservice.client.UserServiceClient;
 import org.zzpj.gymapp.scheduleservice.dto.CreateGroupClassScheduleDTO;
 import org.zzpj.gymapp.scheduleservice.dto.GroupClassScheduleDTO;
 import org.zzpj.gymapp.scheduleservice.dto.UserProfileResponseDTO;
 import org.zzpj.gymapp.scheduleservice.exeption.ScheduleConflictException;
 import org.zzpj.gymapp.scheduleservice.exeption.TrainerBusyException;
-import org.zzpj.gymapp.scheduleservice.model.GroupClassSchedule;
-import org.zzpj.gymapp.scheduleservice.model.GymGroupClassOffering;
-import org.zzpj.gymapp.scheduleservice.model.SessionType;
-import org.zzpj.gymapp.scheduleservice.model.TrainingSession;
+import org.zzpj.gymapp.scheduleservice.exeption.TrainerNotAssignedToGymException;
+import org.zzpj.gymapp.scheduleservice.model.*;
 import org.zzpj.gymapp.scheduleservice.repository.GroupClassScheduleRepository;
 import org.zzpj.gymapp.scheduleservice.repository.GymGroupClassOfferingRepository;
 import org.zzpj.gymapp.scheduleservice.repository.TrainingSessionRepository;
@@ -34,34 +33,48 @@ public class GroupClassScheduleService {
     private final GymGroupClassOfferingRepository gymGroupClassOfferingRepository;
     private final WebClient authServiceClient;
 
+    private final UserServiceClient userServiceClient;
+
     public GroupClassScheduleService(GroupClassScheduleRepository groupClassScheduleRepository,
                                      TrainingSessionRepository trainingSessionRepository,
                                      TrainingSessionService trainingSessionService,
                                      GymGroupClassOfferingRepository gymGroupClassOfferingRepository,
                                      WebClient.Builder webClientBuilder,
-                                     @Value("${user.base-url}") String authBaseUrl) {
+                                     @Value("${user.base-url}") String authBaseUrl,
+                                     UserServiceClient userServiceClient) {
         this.groupClassScheduleRepository = groupClassScheduleRepository;
         this.trainingSessionService = trainingSessionService;
         this.gymGroupClassOfferingRepository = gymGroupClassOfferingRepository;
         this.authServiceClient = webClientBuilder.baseUrl(authBaseUrl).build();
+        this.userServiceClient = userServiceClient;
     }
 
     @Transactional
     public GroupClassScheduleDTO  addGroupClassSchedule(CreateGroupClassScheduleDTO dto) {
         LocalDateTime now = LocalDateTime.now();
+        LocalDateTime tomorrow = now.plusDays(1);
         LocalDateTime oneMonthAhead = now.plusMonths(1);
 
         System.out.println(dto);
+
+        if (dto.getStartTime().isBefore(tomorrow)) {
+            throw new IllegalArgumentException("Zajęcia muszą być tworzone z jednodniowym wyprzedzeniem.");
+        }
 
         if (dto.getStartTime().isAfter(oneMonthAhead)) {
             throw new IllegalArgumentException("Zajęcia mogą być tworzone maksymalnie miesiąc do przodu.");
         }
 
-        System.out.println("SKIBIFI");
-
         GymGroupClassOffering gymGroupClassOffering = gymGroupClassOfferingRepository
                 .findById(dto.getGymGroupClassOfferingId())
                 .orElseThrow(() -> new IllegalArgumentException("Nie znaleziono oferty grupowych zajęć."));
+
+        Gym gym = gymGroupClassOffering.getGym();
+        Long trainerId = dto.getTrainerId();
+
+        if (gym.getTrainerIds() == null || !gym.getTrainerIds().contains(trainerId)) {
+            throw new TrainerNotAssignedToGymException("Trener z ID " + trainerId + " nie jest przypisany do siłowni oferującej te zajęcia.");
+        }
 
         Long gymId = gymGroupClassOffering.getGym().getId();
 
@@ -97,8 +110,9 @@ public class GroupClassScheduleService {
         session.setEndTime(dto.getEndTime());
         session.setClassId(savedSchedule.getId());
         session.setType(SessionType.GROUP);
+        session.setStatus(SessionStatus.CONFIRMED);
 
-        trainingSessionService.createTrainingSession(session);
+        trainingSessionService.createGroupTrainingSession(session);
 
         return mapToDto(savedSchedule);
     }
@@ -144,8 +158,9 @@ public class GroupClassScheduleService {
         session.setEndTime(schedule.getEndTime());
         session.setClassId(savedSchedule.getId());
         session.setType(SessionType.GROUP);
+        session.setStatus(SessionStatus.CONFIRMED);
 
-        trainingSessionService.createTrainingSession(session);
+        trainingSessionService.createGroupTrainingSession(session);
 
         return mapToDto(savedSchedule);
     }
@@ -161,16 +176,26 @@ public class GroupClassScheduleService {
         }
 
         return Flux.fromIterable(participantIds)
-                .flatMap(userId -> authServiceClient.get()
-                        .uri("/profile/{userId}", userId)
-                        .header(HttpHeaders.AUTHORIZATION, authHeader)
-                        .retrieve()
-                        .bodyToMono(UserProfileResponseDTO.class)
+                .flatMap(userId -> Mono.fromCallable(() -> userServiceClient.getProfile(authHeader, userId))
+                        .map(response -> new UserProfileResponseDTO(
+                                response.getId(),
+                                response.getUserId(),
+                                response.getFirstName(),
+                                response.getLastName(),
+                                response.getGender(),
+                                response.getHeight(),
+                                response.getWeight(),
+                                response.getBirthday(),
+                                response.getPhone(),
+                                response.getLevel() != null ? response.getLevel().toString() : null,
+                                response.getBio(),
+                                response.getAvatarUrl(),
+                                response.getRoles()
+                        ))
                         .onErrorResume(e -> Mono.empty())
                 )
                 .collectList();
     }
-
 
 
     public List<GroupClassScheduleDTO> getAllGroupClassScheduleDTOs() {
@@ -186,6 +211,13 @@ public class GroupClassScheduleService {
                     dto.setCapacity(schedule.getCapacity());
                     return dto;
                 })
+                .collect(Collectors.toList());
+    }
+
+    public List<GroupClassScheduleDTO> getGroupClassesByGymId(Long gymId) {
+        return groupClassScheduleRepository.findAll().stream()
+                .filter(schedule -> schedule.getGymGroupClassOffering().getGym().getId().equals(gymId))
+                .map(this::mapToDto)
                 .collect(Collectors.toList());
     }
 }

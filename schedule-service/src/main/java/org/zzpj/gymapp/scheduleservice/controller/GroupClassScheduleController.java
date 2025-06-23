@@ -46,10 +46,10 @@ public class GroupClassScheduleController {
         return ResponseEntity.ok(created);
     }
 
-    @PostMapping("/{scheduleId}/signup/{userId}")
+    @PostMapping("/{scheduleId}/signup")
     public ResponseEntity<GroupClassScheduleDTO> signUpUser(
             @PathVariable Long scheduleId,
-            @PathVariable Long userId) {
+            @RequestHeader("X-User-Id") Long userId) {
         return ResponseEntity.ok(groupClassScheduleService.signUpUser(scheduleId, userId));
     }
 

@@ -1,14 +1,22 @@
 package org.zzpj.gymapp.scheduleservice.service;
 
 
+import jakarta.persistence.EntityNotFoundException;
 import jakarta.transaction.Transactional;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.stereotype.Service;
+import org.springframework.web.bind.annotation.RequestHeader;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.zzpj.gymapp.scheduleservice.exeption.AccessDeniedException;
 import org.zzpj.gymapp.scheduleservice.exeption.ScheduleConflictException;
+import org.zzpj.gymapp.scheduleservice.model.SessionStatus;
 import org.zzpj.gymapp.scheduleservice.model.SessionType;
 import org.zzpj.gymapp.scheduleservice.model.TrainingSession;
 import org.zzpj.gymapp.scheduleservice.repository.TrainingSessionRepository;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.util.List;
 
 @Service
@@ -35,7 +43,7 @@ public class TrainingSessionService {
     }
 
     @Transactional
-    public TrainingSession createTrainingSession(TrainingSession session) {
+    public TrainingSession createGroupTrainingSession(TrainingSession session) {
         LocalDateTime start = session.getStartTime();
         LocalDateTime end = session.getEndTime();
 
@@ -67,20 +75,101 @@ public class TrainingSessionService {
         return trainingSessionRepository.save(session);
     }
 
+    @Transactional
+    public TrainingSession createIndividualTrainingSession(Long trainerId, LocalDate date,
+                                                           LocalTime startTime, LocalTime endTime,
+                                                           Long userId, String rolesHeader) {
+        boolean isCoach = rolesHeader != null && rolesHeader.contains("COACH");
 
-    public List<TrainingSession> getAllSessionsForUser(Long userId) {
+        if (isCoach) {
+            throw new AccessDeniedException("Only users (non-coaches) can create individual training sessions.");
+        }
+
+        LocalDateTime start = LocalDateTime.of(date, startTime);
+        LocalDateTime end = LocalDateTime.of(date, endTime);
+
+        if (!start.isBefore(end)) {
+            throw new IllegalArgumentException("Start time must be before end time.");
+        }
+
+        // Walidacje dostępności
+        checkTrainerAvailability(trainerId, start, end);
+        checkUserAvailability(userId, start, end);
+
+        // Tworzenie sesji
+        TrainingSession session = new TrainingSession();
+        session.setUserId(userId);
+        session.setTrainerId(trainerId);
+        session.setType(SessionType.INDIVIDUAL_COACH);
+        session.setStatus(SessionStatus.STAGING);
+        session.setStartTime(start);
+        session.setEndTime(end);
+
+        return trainingSessionRepository.save(session);
+    }
+
+    @Transactional
+    public TrainingSession respondToIndividualSession(Long sessionId, Long trainerId, boolean accept) {
+        TrainingSession session = trainingSessionRepository.findById(sessionId)
+                .orElseThrow(() -> new EntityNotFoundException("Training session not found."));
+
+        if (!session.getTrainerId().equals(trainerId)) {
+            throw new AccessDeniedException("You are not assigned to this session.");
+        }
+
+        if (session.getType() != SessionType.INDIVIDUAL_COACH) {
+            throw new IllegalStateException("Only individual sessions can be accepted or rejected.");
+        }
+
+        if (session.getStatus() != SessionStatus.STAGING) {
+            throw new IllegalStateException("Only staging sessions can be accepted or rejected.");
+        }
+
+        session.setStatus(accept ? SessionStatus.CONFIRMED : SessionStatus.REJECTED);
+        return trainingSessionRepository.save(session);
+    }
+
+    public List<TrainingSession> getStagingSessionsForUser(Long userId) {
+        if (userId == null) {
+            return List.of();
+        }
         return trainingSessionRepository.findAll()
                 .stream()
-                .filter(s -> s.getUserId().equals(userId))
+                .filter(s -> s.getUserId() != null && s.getUserId().equals(userId) && s.getStatus() == SessionStatus.STAGING)
                 .toList();
     }
 
-    public List<TrainingSession> getAllSessionsForTrainer(Long trainerId) {
+    public List<TrainingSession> getStagingSessionsForTrainer(Long trainerId) {
+        if (trainerId == null) {
+            return List.of(); // Zwraca pustą listę, jeśli trainerId jest null
+        }
         return trainingSessionRepository.findAll()
                 .stream()
-                .filter(s -> s.getTrainerId().equals(trainerId))
+                .filter(s -> s.getTrainerId() != null && s.getTrainerId().equals(trainerId) && s.getStatus() == SessionStatus.STAGING)
                 .toList();
     }
+
+
+
+   public List<TrainingSession> getAllSessionsForUser(Long userId) {
+       if (userId == null) {
+           return List.of();
+       }
+       return trainingSessionRepository.findAll()
+               .stream()
+               .filter(s -> s.getUserId() != null && s.getUserId().equals(userId))
+               .toList();
+   }
+
+   public List<TrainingSession> getAllSessionsForTrainer(Long trainerId) {
+       if (trainerId == null) {
+           return List.of();
+       }
+       return trainingSessionRepository.findAll()
+               .stream()
+               .filter(s -> s.getTrainerId() != null && s.getTrainerId().equals(trainerId))
+               .toList();
+   }
 
     public TrainingSession getById(Long id) {
         return trainingSessionRepository.findById(id)

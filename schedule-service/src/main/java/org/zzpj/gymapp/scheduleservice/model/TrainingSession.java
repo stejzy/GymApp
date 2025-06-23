@@ -27,5 +27,8 @@ public class TrainingSession {
 
     private Long classId;
     private SessionType type;
+
+    @Enumerated(EnumType.STRING)
+    private SessionStatus status = SessionStatus.STAGING;
 }
 

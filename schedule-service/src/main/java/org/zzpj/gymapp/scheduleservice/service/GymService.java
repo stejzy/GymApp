@@ -1,15 +1,14 @@
 package org.zzpj.gymapp.scheduleservice.service;
 
+import feign.FeignException;
 import jakarta.persistence.EntityNotFoundException;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
-import org.zzpj.gymapp.scheduleservice.dto.GymDTO;
-import org.zzpj.gymapp.scheduleservice.dto.GymGroupClassOfferingDTO;
-import org.zzpj.gymapp.scheduleservice.dto.TrainerSummaryDTO;
-import org.zzpj.gymapp.scheduleservice.dto.UserProfileResponseDTO;
+import org.zzpj.gymapp.scheduleservice.client.UserServiceClient;
+import org.zzpj.gymapp.scheduleservice.dto.*;
 import org.zzpj.gymapp.scheduleservice.exeption.CoachAlreadyAssignedException;
 import org.zzpj.gymapp.scheduleservice.exeption.GymNotFoundException;
 import org.zzpj.gymapp.scheduleservice.exeption.UserNotCoachException;
@@ -30,18 +29,17 @@ public class GymService {
     private final GymRepository gymRepository;
     private final GymGroupClassOfferingRepository gymGroupClassOfferingRepository;
     private final GymGroupClassOfferingService gymGroupClassOfferingService;
-    private final WebClient authServiceClient;
+    private final UserServiceClient userServiceClient;
 
     public GymService(GymRepository gymRepository,
                       GymGroupClassOfferingRepository gymGroupClassOfferingRepository,
                       GymGroupClassOfferingService gymGroupClassOfferingService,
-                      WebClient.Builder webClientBuilder,
-                      @Value("${user.base-url}") String authBaseUrl)
+                      UserServiceClient userServiceClient)
     {
         this.gymRepository = gymRepository;
         this.gymGroupClassOfferingRepository = gymGroupClassOfferingRepository;
         this.gymGroupClassOfferingService = gymGroupClassOfferingService;
-        this.authServiceClient = webClientBuilder.baseUrl(authBaseUrl).build();
+        this.userServiceClient = userServiceClient;
     }
 
     public List<GymDTO> getAllGyms() {
@@ -81,21 +79,39 @@ public class GymService {
     }
 
     public Mono<UserProfileResponseDTO> addTrainerToGym(Long gymId, Long userId, String authHeader) {
-       Mono<Gym> gymMono = Mono.fromCallable(() -> gymRepository.findById(gymId)
-               .orElseThrow(() -> new GymNotFoundException("Siłownia o podanym ID nie istnieje.")))
-       .subscribeOn(Schedulers.boundedElastic());
+        Mono<Gym> gymMono = Mono.fromCallable(() -> gymRepository.findById(gymId)
+                        .orElseThrow(() -> new GymNotFoundException("Siłownia o podanym ID nie istnieje.")))
+                .subscribeOn(Schedulers.boundedElastic());
 
-        Mono<UserProfileResponseDTO> userProfileMono = authServiceClient.get()
-                .uri("/profile/{userId}", userId)
-                .header(HttpHeaders.AUTHORIZATION, authHeader)
-                .retrieve()
-                .onStatus(HttpStatusCode::is4xxClientError, resp ->
-                        Mono.error(new UserNotFoundException("Użytkownik o podanym ID nie istnieje."))
-                )
-                .onStatus(HttpStatusCode::is5xxServerError, resp ->
-                        Mono.error(new RuntimeException("Serwis user-service zwrócił błąd."))
-                )
-                .bodyToMono(UserProfileResponseDTO.class);
+        Mono<UserProfileResponseDTO> userProfileMono = Mono.fromCallable(() -> {
+                    UserProfileResponse response = userServiceClient.getProfile(authHeader, userId);
+                    System.out.println("ELO");
+                    System.out.println(response.getUserId());
+                    return new UserProfileResponseDTO(
+                            response.getId(),
+                            response.getUserId(),
+                            response.getFirstName(),
+                            response.getLastName(),
+                            response.getGender(),
+                            response.getHeight(),
+                            response.getWeight(),
+                            response.getBirthday(),
+                            response.getPhone(),
+                            response.getLevel() != null ? response.getLevel().toString() : null,
+                            response.getBio(),
+                            response.getAvatarUrl(),
+                            response.getRoles()
+                    );
+                })
+                .onErrorResume(ex -> {
+                    if (ex instanceof FeignException.NotFound) {
+                        return Mono.error(new UserNotFoundException("Użytkownik o podanym ID nie istnieje."));
+                    } else if (ex instanceof FeignException) {
+                        return Mono.error(new RuntimeException("Serwis user-service zwrócił błąd."));
+                    }
+                    return Mono.error(ex);
+                })
+                .subscribeOn(Schedulers.boundedElastic());
 
         return Mono.zip(gymMono, userProfileMono)
                 .flatMap(tuple -> {
@@ -122,9 +138,9 @@ public class GymService {
                                 return userProfile;
                             })
                             .subscribeOn(Schedulers.boundedElastic());
-
                 });
     }
+
 
 
     public Flux<TrainerSummaryDTO> getTrainersByGymId(Long gymId, String authHeader) {
@@ -139,21 +155,20 @@ public class GymService {
             }
 
             return Flux.fromIterable(trainerIds)
-                    .flatMap(userId -> authServiceClient.get()
-                            .uri("/profile/{userId}", userId)
-                            .header(HttpHeaders.AUTHORIZATION, authHeader)
-                            .retrieve()
-                            .bodyToMono(UserProfileResponseDTO.class)
-                            .map(profile -> new TrainerSummaryDTO(
-                                    profile.getId(),
-                                    profile.getUserId(),
-                                    profile.getFirstName(),
-                                    profile.getLastName(),
-                                    profile.getPhone(),
-                                    profile.getBio(),
-                                    new ArrayList<>(profile.getRoles())
-                            ))
-                            .onErrorResume(e -> Mono.empty())  // Pomija trenerów, których nie można pobrać
+                    .flatMap(userId -> Mono.fromCallable(() -> {
+                                        UserProfileResponse response = userServiceClient.getProfile(authHeader, userId);
+                                        return new TrainerSummaryDTO(
+                                                response.getId(),
+                                                response.getUserId(),
+                                                response.getFirstName(),
+                                                response.getLastName(),
+                                                response.getPhone(),
+                                                response.getBio(),
+                                                new ArrayList<>(response.getRoles())
+                                        );
+                                    })
+                                    .onErrorResume(e -> Mono.empty()) // Pomija trenerów, których nie można pobrać
+                                    .subscribeOn(Schedulers.boundedElastic())
                     );
         });
     }

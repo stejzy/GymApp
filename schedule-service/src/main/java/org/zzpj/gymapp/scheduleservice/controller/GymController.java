@@ -5,11 +5,9 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.*;
-import org.zzpj.gymapp.scheduleservice.dto.GymDTO;
-import org.zzpj.gymapp.scheduleservice.dto.GymGroupClassOfferingDTO;
-import org.zzpj.gymapp.scheduleservice.dto.TrainerSummaryDTO;
-import org.zzpj.gymapp.scheduleservice.dto.UserProfileResponseDTO;
+import org.zzpj.gymapp.scheduleservice.dto.*;
 import org.zzpj.gymapp.scheduleservice.model.Gym;
+import org.zzpj.gymapp.scheduleservice.service.GroupClassScheduleService;
 import org.zzpj.gymapp.scheduleservice.service.GymService;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
@@ -21,9 +19,11 @@ import java.util.List;
 public class GymController {
 
     private final GymService gymService;
+    private final GroupClassScheduleService groupClassScheduleService;
 
-    public GymController(GymService gymService) {
+    public GymController(GymService gymService, GroupClassScheduleService groupClassScheduleService) {
         this.gymService = gymService;
+        this.groupClassScheduleService = groupClassScheduleService;
     }
 
     @GetMapping("")
@@ -46,6 +46,7 @@ public class GymController {
             @RequestHeader(HttpHeaders.AUTHORIZATION) String authHeader,
             @PathVariable Long gymId,
             @PathVariable Long userId) {
+        System.out.println("POOSA");
         return gymService.addTrainerToGym(gymId, userId, authHeader)
                 .map(ResponseEntity::ok);
     }
@@ -57,7 +58,10 @@ public class GymController {
         return gymService.getTrainersByGymId(gymId, authHeader);
     }
 
-
-
+    @GetMapping("/{gymId}/group-classes")
+    public ResponseEntity<List<GroupClassScheduleDTO>> getGroupClassesByGym(@PathVariable Long gymId) {
+        List<GroupClassScheduleDTO> groupClasses = groupClassScheduleService.getGroupClassesByGymId(gymId);
+        return ResponseEntity.ok(groupClasses);
+    }
 
 }
