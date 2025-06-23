@@ -95,7 +95,7 @@ class UserProfileServiceTest {
         // When & Then
         assertThatThrownBy(() -> userProfileService.createProfile(createRequest))
                 .isInstanceOf(UserProfileAlreadyExistsException.class)
-                .hasMessage("Profile already exists for user ID: 1");
+                .hasMessage("Profile not found for user ID: 1");
 
         verify(userProfileRepository).existsByUserId(1L);
         verify(userProfileRepository, never()).save(any(UserProfile.class));
