@@ -5,19 +5,10 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.server.LocalServerPort;
-import org.springframework.context.annotation.Import;
-import org.springframework.core.ParameterizedTypeReference;
-import org.springframework.http.HttpEntity;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.HttpMethod;
-import org.springframework.http.ResponseEntity;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.jdbc.Sql;
-//import org.springframework.web.client.RestTemplate;
-import org.springframework.boot.test.web.client.TestRestTemplate;
 import org.springframework.web.client.RestTemplate;
 import org.zzpj.gymapp.scheduleservice.dto.*;
 import org.zzpj.gymapp.scheduleservice.model.*;
@@ -29,7 +20,6 @@ import org.zzpj.gymapp.scheduleservice.repository.RecurringGroupClassScheduleRep
 import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.LocalTime;
-import java.util.ArrayList;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -72,7 +62,7 @@ class databaseIntegrationTest {
                 "123456789",
                 LocalTime.of(8, 0),
                 LocalTime.of(21, 0),
-                List.of(),
+                List.of(2L),
                 List.of()
         );
 
@@ -84,7 +74,7 @@ class databaseIntegrationTest {
                 "123456789",
                 LocalTime.of(8, 0),
                 LocalTime.of(21, 0),
-                List.of(),
+                List.of(2L),
                 List.of()
         );
         gym1 = gymRepository.save(gym1);

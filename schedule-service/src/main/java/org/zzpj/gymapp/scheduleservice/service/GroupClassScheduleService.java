@@ -2,10 +2,7 @@ package org.zzpj.gymapp.scheduleservice.service;
 
 import jakarta.transaction.Transactional;
 import jakarta.ws.rs.NotFoundException;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.http.HttpHeaders;
 import org.springframework.stereotype.Service;
-import org.springframework.web.reactive.function.client.WebClient;
 import org.zzpj.gymapp.scheduleservice.client.UserServiceClient;
 import org.zzpj.gymapp.scheduleservice.dto.CreateGroupClassScheduleDTO;
 import org.zzpj.gymapp.scheduleservice.dto.GroupClassScheduleDTO;
@@ -31,7 +28,6 @@ public class GroupClassScheduleService {
     private final GroupClassScheduleRepository groupClassScheduleRepository;
     private final TrainingSessionService trainingSessionService;
     private final GymGroupClassOfferingRepository gymGroupClassOfferingRepository;
-    private final WebClient authServiceClient;
 
     private final UserServiceClient userServiceClient;
 
@@ -39,13 +35,10 @@ public class GroupClassScheduleService {
                                      TrainingSessionRepository trainingSessionRepository,
                                      TrainingSessionService trainingSessionService,
                                      GymGroupClassOfferingRepository gymGroupClassOfferingRepository,
-                                     WebClient.Builder webClientBuilder,
-                                     @Value("${user.base-url}") String authBaseUrl,
                                      UserServiceClient userServiceClient) {
         this.groupClassScheduleRepository = groupClassScheduleRepository;
         this.trainingSessionService = trainingSessionService;
         this.gymGroupClassOfferingRepository = gymGroupClassOfferingRepository;
-        this.authServiceClient = webClientBuilder.baseUrl(authBaseUrl).build();
         this.userServiceClient = userServiceClient;
     }
 

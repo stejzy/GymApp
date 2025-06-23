@@ -22,6 +22,7 @@ import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
+import java.util.List;
 import java.util.Map;
 
 @ActiveProfiles("test")
@@ -32,7 +33,6 @@ public class RecurringGroupClassScheduleSteps {
 
     @LocalServerPort
     private int port;
-
 
     private final StepDefinitionsContext context;
 
@@ -60,19 +60,34 @@ public class RecurringGroupClassScheduleSteps {
 
     @Given("a gym group class offering with id 1 exists")
     public void givenGymGroupClassOfferingExists() {
-        GroupClassDefinition definition = new GroupClassDefinition();
-        definition.setName("Test group class");
-        definition.setDescription("Opis testowych zajęć");
-        groupClassDefinitionRepository.save(definition);
 
-        Gym gym = new Gym();
-        gym.setName("Test Gym");
-        gym.setAddress("Testowa 1, Wrocław");
-        gymRepository.save(gym);
+        Gym gym = new Gym( //id = 1
+                null,
+                "Wyciskara",
+                "Lodz",
+                "pomarańczowa 12",
+                "123456789",
+                LocalTime.of(8, 0),
+                LocalTime.of(21, 0),
+                List.of(5L),
+                List.of()
+        );
+        gym = gymRepository.save(gym);
 
-        GymGroupClassOffering offering = new GymGroupClassOffering();
-        offering.setGroupClassDefinition(definition);
-        offering.setGym(gym);
+        GroupClassDefinition definition = new GroupClassDefinition( //id = 1
+                null,
+                "Trening wielkiego chłopa",
+                "Wyciskanie na mordowni"
+        );
+        definition = groupClassDefinitionRepository.save(definition);
+
+        GymGroupClassOffering offering = new GymGroupClassOffering( //id = 1
+                null,
+                gym,
+                definition,
+                List.of(),
+                List.of()
+        );
         gymGroupClassOfferingRepository.save(offering);
     }
 
