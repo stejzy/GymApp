@@ -99,7 +99,7 @@ public class WorkoutService {
     }
 
     private Mono<String> fetchExercisesRawResponse(List<Muscles> muscleGroups) {
-        StringBuilder uriBuilder = new StringBuilder("https://wger.de/api/v2/exerciseinfo/?language=2&limit=20");
+        StringBuilder uriBuilder = new StringBuilder("https://wger.de/api/v2/exerciseinfo/?language=2&limit=100");
 
         if (muscleGroups != null && !muscleGroups.isEmpty()) {
             for (Muscles muscle : muscleGroups) {

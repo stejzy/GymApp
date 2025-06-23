@@ -8,6 +8,7 @@ public class Exercise {
     private String description;
     private int repetitions;
     private int sets;
+    private int weight;
     private List<Muscles> muscles;
 
     public Exercise() {}
@@ -76,4 +77,12 @@ public class Exercise {
     public void setMuscles(List<Muscles> muscles) {
         this.muscles = muscles;
     }
-} 
+
+    public void setWeight(int weight) {
+        this.weight = weight;
+    }
+
+    public int getWeight() {
+        return weight;
+    }
+}

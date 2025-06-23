@@ -4,15 +4,16 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
-import org.zzpj.gymapp.workoutgenerationservice.model.Workout;
+import org.zzpj.gymapp.workoutgenerationservice.model.*;
 import org.zzpj.gymapp.workoutgenerationservice.service.WorkoutService;
 import reactor.core.publisher.Mono;
-import org.zzpj.gymapp.workoutgenerationservice.model.Exercise;
-import org.zzpj.gymapp.workoutgenerationservice.model.Muscles;
+
 import java.util.Collections;
 import java.util.List;
 import org.zzpj.gymapp.workoutgenerationservice.service.GenerationService;
 import org.springframework.util.StringUtils;
+import reactor.core.scheduler.Schedulers;
+
 import java.util.stream.Collectors;
 
 @RestController
@@ -61,8 +62,8 @@ public class WorkoutController {
 
     @GetMapping("/generateTest")
     public ResponseEntity<String> generateTest() {
-        String result = generationService.generateText("test");
-        return ResponseEntity.ok(result);
+//        String result = generationService.generateText("test");
+        return ResponseEntity.ok("ok");
     }
 
     @GetMapping("/exercises/wger")
@@ -142,50 +143,83 @@ public class WorkoutController {
                         .body("Wger Structure Test FAILED"));
     }
 
+//    @PostMapping("/generate")
+//    public Mono<ResponseEntity<String>> generateWorkout(
+//            @RequestParam(required = false, defaultValue = "intermediate") String level,
+//            @RequestParam(required = false, defaultValue = "upper_body") String targetArea,
+//            @RequestParam(required = false, defaultValue = "60") int durationMinutes,
+//            @RequestParam(required = false) List<String> muscleGroups) {
+//
+//        System.out.println("Generating workout for level: " + level + ", target: " + targetArea +
+//                ", duration: " + durationMinutes + " minutes, muscle groups: " + muscleGroups);
+//
+//        final List<Muscles> muscles;
+//        if (muscleGroups != null && !muscleGroups.isEmpty()) {
+//            muscles = muscleGroups.stream()
+//                    .map(Muscles::fromString)
+//                    .filter(muscle -> muscle != null)
+//                    .collect(Collectors.toList());
+//        } else {
+//            muscles = null;
+//        }
+//
+//        return workoutService.fetchExercisesFromWger(muscles)
+//                .map(exercises -> {
+//                    if (exercises.isEmpty()) {
+//                        return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
+//                                .body("Unable to fetch exercises from external API");
+//                    }
+//
+//                    // Przygotowanie promptu dla LLM z listą dostępnych ćwiczeń
+//                    String exercisesList = formatExercisesForLLM(exercises);
+//                    String prompt = buildWorkoutPrompt(level, targetArea, durationMinutes, exercisesList, muscles);
+//
+//                    // Generowanie treningu przez LLM
+//                    String generatedWorkout = generationService.generateText(prompt);
+//
+//                    if (!StringUtils.hasText(generatedWorkout)) {
+//                        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+//                                .body("Failed to generate workout");
+//                    }
+//
+//                    return ResponseEntity.ok(generatedWorkout);
+//                })
+//                .onErrorReturn(ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+//                        .body("Error occurred while generating workout"));
+//    }
+
+
     @PostMapping("/generate")
-    public Mono<ResponseEntity<String>> generateWorkout(
-            @RequestParam(required = false, defaultValue = "intermediate") String level,
-            @RequestParam(required = false, defaultValue = "upper_body") String targetArea,
-            @RequestParam(required = false, defaultValue = "60") int durationMinutes,
-            @RequestParam(required = false) List<String> muscleGroups) {
-        
-        System.out.println("Generating workout for level: " + level + ", target: " + targetArea + 
-                ", duration: " + durationMinutes + " minutes, muscle groups: " + muscleGroups);
-        
-        final List<Muscles> muscles;
-        if (muscleGroups != null && !muscleGroups.isEmpty()) {
-            muscles = muscleGroups.stream()
-                    .map(Muscles::fromString)
-                    .filter(muscle -> muscle != null)
-                    .collect(Collectors.toList());
-        } else {
-            muscles = null;
-        }
-        
+    public Mono<ResponseEntity<Workout>> generateWorkout(
+            @RequestParam(defaultValue = "intermediate") String level,
+            @RequestParam(defaultValue = "strength") String targetArea,
+            @RequestParam(defaultValue = "60") int durationMinutes,
+            @RequestParam(required = false) List<String> muscleGroups
+    ) {
+        List<Muscles> muscles = muscleGroups == null
+            ? List.of()
+            : muscleGroups.stream()
+                .map(Muscles::fromString)
+                .filter(m -> m != null)
+                .collect(Collectors.toList());
+
         return workoutService.fetchExercisesFromWger(muscles)
-                .map(exercises -> {
-                    if (exercises.isEmpty()) {
-                        return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
-                                .body("Unable to fetch exercises from external API");
-                    }
-                    
-                    // Przygotowanie promptu dla LLM z listą dostępnych ćwiczeń
-                    String exercisesList = formatExercisesForLLM(exercises);
-                    String prompt = buildWorkoutPrompt(level, targetArea, durationMinutes, exercisesList, muscles);
-                    
-                    // Generowanie treningu przez LLM
-                    String generatedWorkout = generationService.generateText(prompt);
-                    
-                    if (!StringUtils.hasText(generatedWorkout)) {
-                        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                                .body("Failed to generate workout");
-                    }
-                    
-                    return ResponseEntity.ok(generatedWorkout);
-                })
-                .onErrorReturn(ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                        .body("Error occurred while generating workout"));
+            .flatMap(candidates -> {
+                if (candidates.isEmpty()) {
+                    return Mono.just(ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).build());
+                }
+                ExperienceLevel lvlEnum = ExperienceLevel.valueOf(level.toUpperCase());
+                Goal goalEnum = Goal.fromString(targetArea);
+
+                return Mono.fromCallable(() ->
+                        generationService.generateWorkout(candidates, lvlEnum, goalEnum, durationMinutes)
+                    )
+                    .subscribeOn(Schedulers.boundedElastic())
+                    .map(workout -> ResponseEntity.ok(workout))
+                    .onErrorReturn(ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build());
+            });
     }
+
 
     private String formatExercisesForLLM(List<Exercise> exercises) {
         StringBuilder sb = new StringBuilder();
