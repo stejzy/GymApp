@@ -38,6 +38,7 @@ cd GymApp
 ```
 DB_USERNAME=your_username
 DB_PASSWORD=your_password
+OPENAI_API_KEY=your_openai_token
 ```
 
 4. Start services using Docker Compose:
@@ -67,15 +68,15 @@ docker-compose up -d
 
 ## 📊 Feature Status
 
-- [ ] REST API integration with external services
-- [ ] OpenAPI documentation and API design
+- [x] REST API integration with external services
+- [x] OpenAPI documentation and API design
 - [x] Microservices architecture with Spring Cloud Eureka
 - [x] Centralized configuration with Spring Cloud Config Server
 - [x] Authentication & Authorization with Spring Security
-- [ ] Comprehensive testing (Unit, Integration, BDD with Cucumber)
-- [ ] Code quality with SonarQube
+- [x] Comprehensive testing (Unit, Integration, BDD with Cucumber)
+- [x] Code quality with SonarQube
 - [ ] Modern JDK features implementation
-- [ ] AI/LLM integration
+- [x] AI/LLM integration
 
 ## 👨‍💻 Authors
 
