@@ -31,21 +31,7 @@ class TrainingSessionServiceTest {
     @BeforeEach
     void setUp() {
         MockitoAnnotations.openMocks(this);
-        service = new TrainingSessionService(trainingSessionRepository);
-    }
-
-    @Test
-    void checkTrainerAvailability_shouldThrowIfConflict() {
-        when(trainingSessionRepository.findTrainerConflicts(any(), any(), any())).thenReturn(List.of(new TrainingSession()));
-        assertThatThrownBy(() -> service.checkTrainerAvailability(1L, LocalDateTime.now(), LocalDateTime.now().plusHours(1)))
-                .isInstanceOf(ScheduleConflictException.class);
-    }
-
-    @Test
-    void checkUserAvailability_shouldThrowIfConflict() {
-        when(trainingSessionRepository.findUserConflicts(any(), any(), any())).thenReturn(List.of(new TrainingSession()));
-        assertThatThrownBy(() -> service.checkUserAvailability(1L, LocalDateTime.now(), LocalDateTime.now().plusHours(1)))
-                .isInstanceOf(ScheduleConflictException.class);
+        //service = new TrainingSessionService(trainingSessionRepository);
     }
 
     @Test

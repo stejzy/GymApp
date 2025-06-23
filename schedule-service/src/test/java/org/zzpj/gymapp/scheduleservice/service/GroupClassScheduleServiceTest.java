@@ -44,7 +44,6 @@ class GroupClassScheduleServiceTest {
         MockitoAnnotations.openMocks(this);
         service = new GroupClassScheduleService(
                 groupClassScheduleRepository,
-                trainingSessionRepository,
                 trainingSessionService,
                 gymGroupClassOfferingRepository,
                 userServiceClient
