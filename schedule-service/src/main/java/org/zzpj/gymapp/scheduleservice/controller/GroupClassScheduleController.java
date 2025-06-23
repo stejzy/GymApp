@@ -40,8 +40,6 @@ public class GroupClassScheduleController {
                 capacity
         );
 
-        System.out.println(dto);
-
         GroupClassScheduleDTO  created = groupClassScheduleService.addGroupClassSchedule(dto);
         return ResponseEntity.ok(created);
     }

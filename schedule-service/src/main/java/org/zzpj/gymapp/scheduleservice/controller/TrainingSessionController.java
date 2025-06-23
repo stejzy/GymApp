@@ -18,6 +18,8 @@ import java.util.List;
 @RestController
 @RequestMapping("/training-sessions")
 public class TrainingSessionController {
+    public static final String ROLE_COACH = "COACH";
+    public static final String ROLE_MEMBER = "MEMBER";
 
     private final TrainingSessionService trainingSessionService;
 
@@ -51,10 +53,10 @@ public class TrainingSessionController {
             @RequestHeader("X-User-Id") Long userId,
             @RequestHeader("X-User-Roles") String rolesHeader) {
 
-        if (rolesHeader.contains("COACH")) {
+        if (rolesHeader.contains(ROLE_COACH)) {
             List<TrainingSession> sessions = trainingSessionService.getStagingSessionsForTrainer(userId);
             return ResponseEntity.ok(sessions);
-        } else if (rolesHeader.contains("MEMBER")) {
+        } else if (rolesHeader.contains(ROLE_MEMBER)) {
             List<TrainingSession> sessions = trainingSessionService.getStagingSessionsForUser(userId);
             return ResponseEntity.ok(sessions);
         } else {
@@ -67,10 +69,10 @@ public class TrainingSessionController {
             @RequestHeader("X-User-Id") Long userId,
             @RequestHeader("X-User-Roles") String rolesHeader) {
 
-        if (rolesHeader.contains("COACH")) {
+        if (rolesHeader.contains(ROLE_COACH)) {
             List<TrainingSession> sessions = trainingSessionService.getAllSessionsForTrainer(userId);
             return ResponseEntity.ok(sessions);
-        } else if (rolesHeader.contains("MEMBER")) {
+        } else if (rolesHeader.contains(ROLE_MEMBER)) {
             List<TrainingSession> sessions = trainingSessionService.getAllSessionsForUser(userId);
             return ResponseEntity.ok(sessions);
         } else {
@@ -85,7 +87,7 @@ public class TrainingSessionController {
             @RequestHeader("X-User-Id") Long trainerId,
             @RequestHeader("X-User-Roles") String rolesHeader) {
 
-        if (!rolesHeader.contains("COACH")) {
+        if (!rolesHeader.contains(ROLE_COACH)) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
         }
 

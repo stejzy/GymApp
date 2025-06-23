@@ -2,10 +2,7 @@ package org.zzpj.gymapp.scheduleservice.service;
 
 import jakarta.transaction.Transactional;
 import jakarta.ws.rs.NotFoundException;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.http.HttpHeaders;
 import org.springframework.stereotype.Service;
-import org.springframework.web.reactive.function.client.WebClient;
 import org.zzpj.gymapp.scheduleservice.client.UserServiceClient;
 import org.zzpj.gymapp.scheduleservice.dto.CreateGroupClassScheduleDTO;
 import org.zzpj.gymapp.scheduleservice.dto.GroupClassScheduleDTO;
@@ -16,7 +13,6 @@ import org.zzpj.gymapp.scheduleservice.exeption.TrainerNotAssignedToGymException
 import org.zzpj.gymapp.scheduleservice.model.*;
 import org.zzpj.gymapp.scheduleservice.repository.GroupClassScheduleRepository;
 import org.zzpj.gymapp.scheduleservice.repository.GymGroupClassOfferingRepository;
-import org.zzpj.gymapp.scheduleservice.repository.TrainingSessionRepository;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
@@ -31,21 +27,15 @@ public class GroupClassScheduleService {
     private final GroupClassScheduleRepository groupClassScheduleRepository;
     private final TrainingSessionService trainingSessionService;
     private final GymGroupClassOfferingRepository gymGroupClassOfferingRepository;
-    private final WebClient authServiceClient;
-
     private final UserServiceClient userServiceClient;
 
     public GroupClassScheduleService(GroupClassScheduleRepository groupClassScheduleRepository,
-                                     TrainingSessionRepository trainingSessionRepository,
                                      TrainingSessionService trainingSessionService,
                                      GymGroupClassOfferingRepository gymGroupClassOfferingRepository,
-                                     WebClient.Builder webClientBuilder,
-                                     @Value("${user.base-url}") String authBaseUrl,
                                      UserServiceClient userServiceClient) {
         this.groupClassScheduleRepository = groupClassScheduleRepository;
         this.trainingSessionService = trainingSessionService;
         this.gymGroupClassOfferingRepository = gymGroupClassOfferingRepository;
-        this.authServiceClient = webClientBuilder.baseUrl(authBaseUrl).build();
         this.userServiceClient = userServiceClient;
     }
 
@@ -54,8 +44,6 @@ public class GroupClassScheduleService {
         LocalDateTime now = LocalDateTime.now();
         LocalDateTime tomorrow = now.plusDays(1);
         LocalDateTime oneMonthAhead = now.plusMonths(1);
-
-        System.out.println(dto);
 
         if (dto.getStartTime().isBefore(tomorrow)) {
             throw new IllegalArgumentException("Zajęcia muszą być tworzone z jednodniowym wyprzedzeniem.");

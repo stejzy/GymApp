@@ -9,9 +9,13 @@ tags:
     description: Operations related to training sessions.
   - name: Gym
     description: Operations related to gyms.
+  - name: RecurringGroupClassSchedule
+    description: Operations related to recurring group class schedules
+  - name: GroupClassSchedule
+    description: Operations related to single group class schedules
 
 paths:
-  /training-sessions:
+  /training-sessions/create-individual:
     post:
       summary: Create an individual training session.
       tags: [TrainingSession]
@@ -59,6 +63,7 @@ paths:
         '400':
           description: Invalid input data.
 
+  /training-sessions/all:
     get:
       summary: Retrieve all training sessions.
       tags: [TrainingSession]
@@ -274,6 +279,161 @@ paths:
                 items:
                   $ref: '#/components/schemas/GroupClassScheduleDTO'
 
+  /schedule/add-recurring-group-class:
+    post:
+      summary: Add a recurring group class schedule
+      tags: [RecurringGroupClassSchedule]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RequestRecurringGroupClassScheduleDTO'
+      responses:
+        '200':
+          description: Recurring group class schedule added
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResponseRecurringGroupClassScheduleDTO'
+
+  /schedule/get-recurring-group-classes/{id}:
+    get:
+      summary: Get recurring group class schedules by gym ID
+      tags: [RecurringGroupClassSchedule]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: List of recurring group class schedules for the gym
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ResponseRecurringGroupClassScheduleDTO'
+
+  /schedule/get-all-recurring-group-classes:
+    get:
+      summary: Get all recurring group class schedules
+      tags: [RecurringGroupClassSchedule]
+      responses:
+        '200':
+          description: List of all recurring group class schedules
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ResponseRecurringGroupClassScheduleDTO'
+
+  /singleGroupClass/add-group-class:
+    post:
+      summary: Add a single group class schedule
+      tags: [ GroupClassSchedule ]
+      parameters:
+        - name: gymGroupClassOfferingId
+          in: query
+          required: true
+          schema:
+            type: integer
+        - name: trainerId
+          in: query
+          required: true
+          schema:
+            type: integer
+        - name: startTime
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date-time
+        - name: endTime
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date-time
+        - name: capacity
+          in: query
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Created group class schedule
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GroupClassScheduleDTO'
+
+  /singleGroupClass/{scheduleId}/signup:
+    post:
+      summary: Sign up a user for a group class
+      tags: [ GroupClassSchedule ]
+      parameters:
+        - name: scheduleId
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: X-User-Id
+          in: header
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Updated group class schedule
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GroupClassScheduleDTO'
+
+  /singleGroupClass/all-group-classes-dto:
+    get:
+      summary: Get all group class schedules
+      tags: [ GroupClassSchedule ]
+      responses:
+        '200':
+          description: List of group class schedules
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/GroupClassScheduleDTO'
+
+  /singleGroupClass/{scheduleId}/participants:
+    get:
+      summary: Get profiles of group class participants
+      tags: [ GroupClassSchedule ]
+      parameters:
+        - name: scheduleId
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: Authorization
+          in: header
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: List of participant profiles
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/UserProfileResponseDTO'
+
+
 components:
   schemas:
     TrainingSession:
@@ -312,22 +472,192 @@ components:
           type: integer
         name:
           type: string
+        city:
+          type: string
         address:
           type: string
-        # Add other properties as in your GymDTO class
+        phoneNumber:
+          type: string
+        openingHour:
+          type: string
+          format: time
+        closingHour:
+          type: string
+          format: time
+
+    GroupClassDefinitionDTO:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        description:
+          type: string
 
     GymGroupClassOfferingDTO:
       type: object
-      # Add properties as in your GymGroupClassOfferingDTO class
+      properties:
+        id:
+          type: integer
+        gym:
+          $ref: '#/components/schemas/GymDTO'
+        groupClassDefinition:
+          $ref: '#/components/schemas/GroupClassDefinitionDTO'
 
     UserProfileResponseDTO:
       type: object
-      # Add properties as in your UserProfileResponseDTO class
+      properties:
+        id:
+          type: integer
+        userId:
+          type: integer
+        firstName:
+          type: string
+        lastName:
+          type: string
+        gender:
+          type: string
+        height:
+          type: number
+          format: double
+        weight:
+          type: number
+          format: double
+        birthday:
+          type: string
+          format: date
+        phone:
+          type: string
+        level:
+          type: string
+        bio:
+          type: string
+        avatarUrl:
+          type: string
+        roles:
+          type: array
+          items:
+            type: string
 
     TrainerSummaryDTO:
       type: object
-      # Add properties as in your TrainerSummaryDTO class
+      properties:
+        id:
+          type: integer
+        userId:
+          type: integer
+        firstName:
+          type: string
+        lastName:
+          type: string
+        phone:
+          type: string
+        bio:
+          type: string
+        roles:
+          type: array
+          items:
+            type: string
 
     GroupClassScheduleDTO:
       type: object
-      # Add properties as in your GroupClassScheduleDTO class
+      properties:
+        id:
+          type: integer
+        gymGroupClassOfferingName:
+          type: string
+        trainerId:
+          type: integer
+        startTime:
+          type: string
+          format: date-time
+        endTime:
+          type: string
+          format: date-time
+        participantIds:
+          type: array
+          items:
+            type: integer
+        capacity:
+          type: integer
+
+    RequestRecurringGroupClassScheduleDTO:
+      type: object
+      properties:
+        gymGroupClassOfferingId:
+          type: integer
+        trainerId:
+          type: integer
+        dayOfWeek:
+          type: string
+          enum:
+            - MONDAY
+            - TUESDAY
+            - WEDNESDAY
+            - THURSDAY
+            - FRIDAY
+            - SATURDAY
+            - SUNDAY
+        startTime:
+          type: string
+          format: time
+        endTime:
+          type: string
+          format: time
+        startDate:
+          type: string
+          format: date
+        endDate:
+          type: string
+          format: date
+        frequency:
+          type: string
+          enum:
+            - DAILY
+            - WEEKLY
+            - BIWEEKLY
+            - MONTHLY
+        capacity:
+          type: integer
+
+    ResponseRecurringGroupClassScheduleDTO:
+      type: object
+      properties:
+        id:
+          type: integer
+        gymGroupClassOffering:
+          $ref: '#/components/schemas/GymGroupClassOfferingDTO'
+        trainerId:
+          type: integer
+        dayOfWeek:
+          type: string
+          enum:
+            - MONDAY
+            - TUESDAY
+            - WEDNESDAY
+            - THURSDAY
+            - FRIDAY
+            - SATURDAY
+            - SUNDAY
+        startTime:
+          type: string
+          format: time
+        endTime:
+          type: string
+          format: time
+        startDate:
+          type: string
+          format: date
+        endDate:
+          type: string
+          format: date
+        frequency:
+          type: string
+          enum:
+            - DAILY
+            - WEEKLY
+            - BIWEEKLY
+            - MONTHLY
+        capacity:
+          type: integer
