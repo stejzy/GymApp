@@ -37,8 +37,12 @@ public class GymController {
     }
 
     @GetMapping("/{id}/group-class-offerings")
-    public ResponseEntity<List<GymGroupClassOfferingDTO>> getGymGroupClassOfferings(@PathVariable Long id) {
-        return ResponseEntity.ok(gymService.getGymGroupClassOfferings(id));
+    public ResponseEntity<List<GroupClassDefinitionDTO>> getGymGroupClassOfferings(@PathVariable Long id) {
+        List<GroupClassDefinitionDTO> groupClassDefinitions = gymService.getGymGroupClassOfferings(id)
+            .stream()
+            .map(GymGroupClassOfferingDTO::groupClassDefinition)
+            .toList();
+        return ResponseEntity.ok(groupClassDefinitions);
     }
 
     @PostMapping("/{gymId}/add-trainer/{userId}")

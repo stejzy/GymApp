@@ -56,22 +56,23 @@ class GymControllerTest {
         verify(gymService, times(1)).getGymById(1L);
     }
 
-    @Test
-    void getGymGroupClassOfferings_shouldReturnList() {
-        GymDTO gymDTO = new GymDTO(1L, "Gym A", "CityA", "Address A", "123456789", LocalTime.of(6,0), LocalTime.of(22,0));
-        GroupClassDefinitionDTO groupClassDefDTO = new GroupClassDefinitionDTO(10L, "Yoga", "Morning yoga class");
+   @Test
+   void getGymGroupClassOfferings_shouldReturnList() {
+       GymDTO gymDTO = new GymDTO(1L, "Gym A", "CityA", "Address A", "123456789", LocalTime.of(6,0), LocalTime.of(22,0));
+       GroupClassDefinitionDTO groupClassDefDTO1 = new GroupClassDefinitionDTO(10L, "Yoga", "Morning yoga class");
+       GroupClassDefinitionDTO groupClassDefDTO2 = new GroupClassDefinitionDTO(11L, "CrossFit", "High intensity");
 
-        List<GymGroupClassOfferingDTO> offerings = List.of(
-                new GymGroupClassOfferingDTO(100L, gymDTO, groupClassDefDTO),
-                new GymGroupClassOfferingDTO(101L, gymDTO, new GroupClassDefinitionDTO(11L, "CrossFit", "High intensity"))
-        );
+       List<GymGroupClassOfferingDTO> offerings = List.of(
+               new GymGroupClassOfferingDTO(100L, gymDTO, groupClassDefDTO1),
+               new GymGroupClassOfferingDTO(101L, gymDTO, groupClassDefDTO2)
+       );
 
-        when(gymService.getGymGroupClassOfferings(1L)).thenReturn(offerings);
+       when(gymService.getGymGroupClassOfferings(1L)).thenReturn(offerings);
 
-        ResponseEntity<List<GymGroupClassOfferingDTO>> response = gymController.getGymGroupClassOfferings(1L);
+       ResponseEntity<List<GroupClassDefinitionDTO>> response = gymController.getGymGroupClassOfferings(1L);
 
-        assertThat(response.getStatusCodeValue()).isEqualTo(200);
-        assertThat(response.getBody()).isEqualTo(offerings);
-        verify(gymService, times(1)).getGymGroupClassOfferings(1L);
-    }
+       assertThat(response.getStatusCodeValue()).isEqualTo(200);
+       assertThat(response.getBody()).containsExactly(groupClassDefDTO1, groupClassDefDTO2);
+       verify(gymService, times(1)).getGymGroupClassOfferings(1L);
+   }
 }

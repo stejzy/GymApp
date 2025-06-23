@@ -165,7 +165,7 @@ public class GymService {
                                                 new ArrayList<>(response.getRoles())
                                         );
                                     })
-                                    .onErrorResume(e -> Mono.empty()) // Pomija trenerów, których nie można pobrać
+                                    .onErrorResume(e -> Mono.empty())
                                     .subscribeOn(Schedulers.boundedElastic())
                     );
         });
